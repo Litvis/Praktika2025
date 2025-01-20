@@ -19,7 +19,8 @@
 const props = defineProps({
   recipient: {
     type: String,
-    required: true,
+    required: false, // No longer required
+    default: '',     // Defaults to an empty string
   },
 });
 
