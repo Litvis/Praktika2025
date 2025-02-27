@@ -16,11 +16,8 @@
 
               <!-- Conditional Rendering of Interfaces -->
               <div class="mb-8">
-                <EmailInput
-                  v-if="currentOption === 'email'"
-                  v-model="recipient"
-                  @updateRecipient="updateRecipient"
-                />
+                <EmailInput v-model="recipient" />
+
                 <FileUpload
                   v-if="currentOption === 'csv'"
                   @updateEmails="updateEmails"

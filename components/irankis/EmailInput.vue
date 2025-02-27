@@ -6,8 +6,7 @@
     <input
       type="text"
       id="email"
-      :value="recipient"
-      @input="updateRecipient($event.target.value)"
+      v-model="inputValue" 
       placeholder="Recipient Email"
       class="mt-2 block w-full px-4 py-2 text-gray-700 border-2 border-green-600 rounded-md shadow-lg focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-green-800 placeholder-gray-400"
     />
@@ -15,20 +14,26 @@
 </template>
 
 <script setup>
-// Define the 'recipient' prop that will be passed from the parent component
+import { ref, watch } from 'vue';
+
 const props = defineProps({
-  recipient: {
+  modelValue: {
     type: String,
-    required: false, // No longer required
-    default: '',     // Defaults to an empty string
+    default: '',
   },
 });
 
-// Define the emit function to emit the updateRecipient event
-const emit = defineEmits(['updateRecipient']);
+const emit = defineEmits(['update:modelValue']);
 
-// Function to emit the updated recipient value to the parent component
-const updateRecipient = (newRecipient) => {
-  emit('updateRecipient', newRecipient);  // Emit the new recipient value
-};
+const inputValue = ref(props.modelValue);
+
+// Watch for external updates from the parent
+watch(() => props.modelValue, (newVal) => {
+  inputValue.value = newVal;
+});
+
+// Emit updates when user types
+watch(inputValue, (newVal) => {
+  emit('update:modelValue', newVal);
+});
 </script>
