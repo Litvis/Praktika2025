@@ -32,7 +32,7 @@
         </div>
       </div>
       <div class="w-full p-16">
-        <Textarea 
+        <TextArea 
           :subject="subject" 
           :message="message" 
           @updateSubject="updateSubject" 
