@@ -27,8 +27,9 @@ const emit = defineEmits(['updateRecipient']);
 
 const inputValue = ref(props.recipient);
 
-// 🔄 Watch for changes and sync correctly
+// Ensure two-way binding
 watch(inputValue, (newValue) => {
+  console.log("🔄 Updating recipient:", newValue);
   emit('updateRecipient', newValue);
 });
 

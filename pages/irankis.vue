@@ -16,10 +16,11 @@
 
               <!-- Conditional Rendering of Interfaces -->
               <div class="mb-8">
-                <EmailInput
+<EmailInput
   v-if="currentOption === 'email'"
   v-model:recipient="recipient"
 />
+
 
                 <FileUpload
                   v-if="currentOption === 'csv'"
@@ -88,16 +89,16 @@ const updateMessage = (newMessage) => {
 };
 
 const sendEmail = async () => {
-  const config = useRuntimeConfig();
+  console.log("📩 Debugging recipient:", recipient.value);
 
-  // Ensure recipient is always a valid email
   if (!recipient.value || recipient.value.trim() === '') {
     alert("❌ Please enter at least one email!");
     return;
   }
 
+  const config = useRuntimeConfig();
   const emailData = {
-    recipient: recipient.value.trim(), // Ensure it's a string
+    recipient: recipient.value.trim(),
     subject: subject.value.trim(),
     message: message.value.trim(),
   };
@@ -119,6 +120,7 @@ const sendEmail = async () => {
     alert('Failed to send email.');
   }
 };
+
 
 
 
