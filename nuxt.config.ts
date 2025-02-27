@@ -2,6 +2,10 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
+  runtimeConfig: {
+    public: {
+      apiBase: "https://praktika2025.onrender.com", // Make sure this is correct!
+    }},
   routeRules: {
     '/': { redirect: '/irankis' }
   },
