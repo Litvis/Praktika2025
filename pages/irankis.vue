@@ -88,30 +88,28 @@ const updateMessage = (newMessage) => {
 };
 
 const sendEmail = async () => {
-  const config = useRuntimeConfig(); // Get environment variables
+  const config = useRuntimeConfig(); // ✅ Load runtime config
+  console.log("🔍 API Base URL:", config.public.apiBase); // Debugging
 
   const emailData = {
-    recipient: recipientsList.value.join(', '), // Join multiple emails with a comma for sending
+    recipient: recipientsList.value.join(', '),
     subject: subject.value,
     message: message.value,
   };
 
-  console.log("Sending email data:", emailData); // Log emailData to check message content
+  console.log("📤 Sending email data:", emailData); // Debugging
 
   try {
     await $fetch('/send-email', {
-  baseURL: config.public.apiBase,
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: emailData,
-});
+      baseURL: config.public.apiBase, // ✅ Uses the correct backend URL
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: emailData,
+    });
 
-
-
-
-    alert('Email sent successfully!');
+    alert('✅ Email sent successfully!');
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error sending email:', error);
     alert('Failed to send email.');
   }
 };
