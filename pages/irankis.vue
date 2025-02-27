@@ -88,8 +88,8 @@ const updateMessage = (newMessage) => {
 };
 
 const sendEmail = async () => {
-  const config = useRuntimeConfig(); // ✅ Load runtime config
-  console.log("🔍 API Base URL:", config.public.apiBase); // Debugging
+  const config = useRuntimeConfig(); // ✅ Load Nuxt runtime config
+  console.log("🔍 API Base URL:", config.public?.apiBase || "❌ Not Found"); // Debugging
 
   const emailData = {
     recipient: recipientsList.value.join(', '),
@@ -101,7 +101,7 @@ const sendEmail = async () => {
 
   try {
     await $fetch('/send-email', {
-      baseURL: config.public.apiBase, // ✅ Uses the correct backend URL
+      baseURL: config.public?.apiBase || "https://praktika2025.onrender.com", // ✅ Default to Render backend if undefined
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: emailData,
@@ -113,5 +113,6 @@ const sendEmail = async () => {
     alert('Failed to send email.');
   }
 };
+
 
 </script>
