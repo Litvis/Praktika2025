@@ -85,31 +85,37 @@ const updateMessage = (newMessage) => {
 };
 
 const sendEmail = async () => {
-  const config = useRuntimeConfig(); // ✅ Load Nuxt runtime config
-  console.log("🔍 API Base URL:", config.public?.apiBase || "❌ Not Found"); // Debugging
+  const config = useRuntimeConfig(); // Get environment variables
+
+  if (!recipientsList.value.length) {
+    alert("❌ Please enter at least one email!");
+    return;
+  }
 
   const emailData = {
-    recipient: recipientsList.value.join(', '),
-    subject: subject.value,
-    message: message.value,
+    recipient: recipientsList.value.join(', '), // Ensure it's a string
+    subject: subject.value.trim(),
+    message: message.value.trim(),
   };
 
-  console.log("📤 Sending email data:", emailData); // Debugging
+  console.log("📤 Sending email data:", JSON.stringify(emailData, null, 2));
 
   try {
-    await $fetch('/send-email', {
-      baseURL: config.public?.apiBase || "https://praktika2025.onrender.com", // ✅ Default to Render backend if undefined
+    const response = await $fetch('/send-email', {
+      baseURL: config.public.apiBase,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: emailData,
     });
 
-    alert('✅ Email sent successfully!');
+    console.log("✅ Email sent successfully:", response);
+    alert('Email sent successfully!');
   } catch (error) {
     console.error('❌ Error sending email:', error);
     alert('Failed to send email.');
   }
 };
+
 
 
 </script>

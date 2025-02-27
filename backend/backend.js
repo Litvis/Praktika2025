@@ -15,38 +15,31 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message } = req.body;
 
-  const recipientsArray = recipient.split(',').map(email => email.trim());
+  // Ensure recipient is an array
+  const recipientsArray = recipient
+    ? recipient.split(',').map(email => email.trim())
+    : [];
 
   if (recipientsArray.length === 0 || recipientsArray.some(email => !email.includes('@'))) {
-    return res.status(400).send('Invalid recipient email(s)');
+    return res.status(400).json({ error: 'Invalid recipient email(s)' });
   }
 
   const msg = {
-    to: recipientsArray.map(email => ({ email })),
+    to: recipientsArray, // SendGrid expects an array
     from: 'deividaslitvinenko4@gmail.com',
-    subject: subject,
+    subject,
     text: message,
     html: `<p>${message}</p>`,
   };
 
   try {
-    const response = await sgMail.send(msg);
-
-    console.log('SendGrid response:', response);
-
-    res.status(200).send('Email sent successfully');
+    await sgMail.send(msg);
+    res.status(200).json({ success: true, message: 'Email sent successfully' });
   } catch (error) {
-    console.error('SendGrid error:', error.response ? error.response.body : error);
-
-    if (error.response && error.response.body) {
-      console.error('Error details:', JSON.stringify(error.response.body, null, 2));
-    }
-
-
-    res.status(500).send('Failed to send email');
+    console.error('❌ SendGrid error:', error.response?.body || error.message);
+    res.status(500).json({ error: 'Failed to send email' });
   }
 });
-
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
