@@ -16,10 +16,12 @@
 
               <!-- Conditional Rendering of Interfaces -->
               <div class="mb-8">
-<EmailInput
+                <EmailInput
   v-if="currentOption === 'email'"
-  v-model:recipient="recipient"
+  :recipient="recipient"
+  @updateRecipient="recipient = $event"
 />
+
 
 
                 <FileUpload
@@ -89,7 +91,7 @@ const updateMessage = (newMessage) => {
 };
 
 const sendEmail = async () => {
-  console.log("📩 Debugging recipient:", recipient.value);
+  console.log("📩 Debugging recipient before sending:", recipient.value); // Add this!
 
   if (!recipient.value || recipient.value.trim() === '') {
     alert("❌ Please enter at least one email!");
