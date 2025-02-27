@@ -87,8 +87,9 @@ const updateMessage = (newMessage) => {
   message.value = newMessage;
 };
 
-// Send email function
 const sendEmail = async () => {
+  const config = useRuntimeConfig(); // Get environment variables
+
   const emailData = {
     recipient: recipientsList.value.join(', '), // Join multiple emails with a comma for sending
     subject: subject.value,
@@ -98,20 +99,21 @@ const sendEmail = async () => {
   console.log("Sending email data:", emailData); // Log emailData to check message content
 
   try {
-    const response = await fetch('http://localhost:3001/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(emailData),
-    });
+    await $fetch('/send-email', {
+  baseURL: config.public.apiBase,
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: emailData,
+});
 
-    if (response.ok) {
-      alert('Email sent!');
-    } else {
-      alert('Failed to send email.');
-    }
+
+
+
+    alert('Email sent successfully!');
   } catch (error) {
     console.error('Error:', error);
-    alert('An error occurred.');
+    alert('Failed to send email.');
   }
 };
+
 </script>
