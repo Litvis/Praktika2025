@@ -17,10 +17,10 @@
               <!-- Conditional Rendering of Interfaces -->
               <div class="mb-8">
                 <EmailInput
-  v-if="currentOption === 'email'"
-  :recipient="recipient"
-  @updateRecipient="recipient = $event"
-/>
+                v-if="currentOption === 'email'"
+                :recipient="recipient"
+                @updateRecipient="recipient = $event"
+              />
 
 
 
