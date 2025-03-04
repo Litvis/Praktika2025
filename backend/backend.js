@@ -3,10 +3,9 @@ import sgMail from '@sendgrid/mail';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-const app = express();
 dotenv.config();
 
-
+const app = express();
 app.use(cors());
 app.use(express.json());
 
@@ -15,7 +14,6 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message } = req.body;
 
-  // Ensure recipient is an array
   const recipientsArray = recipient
     ? recipient.split(',').map(email => email.trim())
     : [];
@@ -25,7 +23,7 @@ app.post('/send-email', async (req, res) => {
   }
 
   const msg = {
-    to: recipientsArray, // SendGrid expects an array
+    to: recipientsArray,
     from: 'deividaslitvinenko4@gmail.com',
     subject,
     text: message,
@@ -33,13 +31,17 @@ app.post('/send-email', async (req, res) => {
   };
 
   try {
+    // Send email via SendGrid
     await sgMail.send(msg);
+    console.log("✅ Email sent successfully");
+
     res.status(200).json({ success: true, message: 'Email sent successfully' });
   } catch (error) {
     console.error('❌ SendGrid error:', error.response?.body || error.message);
     res.status(500).json({ error: 'Failed to send email' });
   }
 });
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

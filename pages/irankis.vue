@@ -91,10 +91,10 @@ const updateMessage = (newMessage) => {
 };
 
 const sendEmail = async () => {
-  console.log("📩 Debugging recipient before sending:", recipient.value); // Add this!
+  console.log("📩 Debugging recipient before sending:", recipient.value);
 
   if (!recipient.value || recipient.value.trim() === '') {
-    alert("❌ Please enter at least one email!");
+    alert("❌ Please enter a valid email!");
     return;
   }
 
@@ -122,6 +122,7 @@ const sendEmail = async () => {
     alert('Failed to send email.');
   }
 };
+
 
 
 
