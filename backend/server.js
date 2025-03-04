@@ -21,18 +21,21 @@ const client = new Client({
 client.connect();
 
 app.post('/messages', async (req, res) => {
-  const { subject, message, recipient_email } = req.body;
-  try {
-    const result = await client.query(
-      'INSERT INTO messages (subject, message, recipient_email) VALUES ($1, $2, $3) RETURNING *',
-      [subject, message, recipient_email]
-    );
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Error saving message');
-  }
-});
+    console.log("📩 Incoming request body:", req.body); // ✅ Log the data
+    const { subject, description, recipient_email } = req.body;
+  
+    try {
+      const result = await client.query(
+        'INSERT INTO messages (subject, description, recipient_email) VALUES ($1, $2, $3) RETURNING *',
+        [subject, description, recipient_email]
+      );
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("❌ Database Error:", error);
+      res.status(500).send('Error saving message');
+    }
+  });
+  
 
 app.get('/messages', async (req, res) => {
   try {

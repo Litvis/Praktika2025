@@ -21,6 +21,7 @@
     "@tiptap/pm": "^2.11.0",
     "@tiptap/starter-kit": "^2.11.0",
     "@tiptap/vue-3": "^2.11.0",
+    "axios": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
