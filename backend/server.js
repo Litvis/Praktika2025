@@ -5,7 +5,24 @@ import pkg from 'pg';
 
 dotenv.config();
 const app = express();
-app.use(cors());
+
+// Comprehensive CORS Configuration
+const corsOptions = {
+  origin: [
+    'https://praktika2025-6dq2.vercel.app', 
+    'https://praktika2025-6dq2-52d2rvhg4-deividas-projects-55dbf9c2.vercel.app',
+    'http://localhost:3000'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// CORS Middleware
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 const { Pool } = pkg;
