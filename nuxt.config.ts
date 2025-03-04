@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   runtimeConfig: {
     public: {
-      apiBase: "https://praktika2025.onrender.com", // Make sure this is correct!
+      apiBase: process.env.BACKEND_URL || "https://praktika2025.onrender.com", // Make sure this is correct!
     }},
   routeRules: {
     '/': { redirect: '/irankis' }

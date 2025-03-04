@@ -7,44 +7,29 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
-const { Client } = pkg;
 
-const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // Required for Render
-  });
-  
-  client.connect()
-    .then(() => console.log("✅ Connected to Render PostgreSQL"))
-    .catch(err => console.error("❌ Database Connection Error:", err));
+const { Pool } = pkg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // Required for NeonDB
+});
 
-app.post('/messages', async (req, res) => {
-    console.log("📩 Incoming request body:", req.body); // ✅ Log the data
-    const { subject, description, recipient_email } = req.body;
-  
-    try {
-      const result = await client.query(
-        'INSERT INTO messages (subject, description, recipient_email) VALUES ($1, $2, $3) RETURNING *',
-        [subject, description, recipient_email]
-      );
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error("❌ Database Error:", error);
-      res.status(500).send('Error saving message');
-    }
-  });
-  
+// ✅ Test DB Connection
+pool.connect()
+  .then(() => console.log("✅ Connected to NeonDB"))
+  .catch(err => console.error("❌ Database Connection Error:", err));
 
+// ✅ Sample API Route
 app.get('/messages', async (req, res) => {
   try {
-    const result = await client.query('SELECT * FROM messages ORDER BY created_at DESC');
+    const result = await pool.query('SELECT * FROM messages ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error fetching messages:", error);
     res.status(500).send('Error fetching messages');
   }
 });
 
-app.listen(3000, () => {
-  console.log('Server running on port 3000');
+app.listen(10000, () => {
+  console.log('🚀 Server running on port 10000');
 });
