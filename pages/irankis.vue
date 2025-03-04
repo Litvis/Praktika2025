@@ -1,40 +1,39 @@
 <template>
-  <div class="flex justify-center place-items-center h-screen">
+  <div class="flex justify-center place-items-center h-screen ">
     <div class="w-full grid grid-cols-2 bg-gray-100 mx-8 py-24 items-center border rounded-xl">
       <div class="h-2/5 flex justify-center">
         <div class="w-1/2 flex justify-center rounded-xl border-2 bg-white">
           <div class="w-auto flex flex-col justify-evenly">
-            <div>
+            <div class="">
               <NavigationButtons
                 :options="options"
                 v-model:currentOption="currentOption"
               />
             </div>
-            <div>
+            <div class="">
               <p class="font-bold text-3xl text-center">Pildymas</p>
               <hr class="mt-2" />
 
+              <!-- Conditional Rendering of Interfaces -->
               <div class="mb-8">
                 <EmailInput
-                  v-if="currentOption === 'email'"
-                  :recipient="recipient"
-                  @updateRecipient="updateRecipient"
-                />
+                v-if="currentOption === 'email'"
+                :recipient="recipient"
+                @updateRecipient="recipient = $event"
+              />
+
+
 
                 <FileUpload
                   v-if="currentOption === 'csv'"
                   @updateEmails="updateEmails"
                 />
-                
-                <GroupSelection 
-                  v-if="currentOption === 'group'" 
-                />
+                <GroupSelection v-if="currentOption === 'group'" />
               </div>
             </div>
           </div>
         </div>
       </div>
-      
       <div class="w-full p-16">
         <TextArea 
           :subject="subject" 
@@ -42,99 +41,90 @@
           @updateSubject="updateSubject" 
           @updateMessage="updateMessage" 
         />
-        <button 
-          @click="sendEmail" 
-          :disabled="isLoading"
-          class="border-2 p-4 w-48 rounded-xl bg-green-700 text-white font-bold text-xl ml-2 disabled:opacity-50"
-        >
-          {{ isLoading ? 'Siunčiama...' : 'Siusti' }}
-        </button>
+        <button @click="sendEmail" class="border-2 p-4 w-48 rounded-xl bg-green-700 text-white font-bold text-xl ml-2">Siusti</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import axios from 'axios'
+import { ref } from 'vue';
 
-// Interfaces and Types
-const currentOption = ref('email')
-const recipient = ref('')
-const recipientsList = ref([])
-const subject = ref('')
-const message = ref('')
-const isLoading = ref(false)
-const error = ref(null)
+// State for current option and recipient
+const currentOption = ref('email');
+const recipient = ref('');
+const recipientsList = ref([]); // Holds the list of email recipients (can be single or multiple)
 
 // Options for navigation
 const options = [
   { id: 'email', label: 'Vienam' },
   { id: 'csv', label: 'CSV' },
   { id: 'group', label: 'Grupei' },
-]
+];
 
-// Validation Utilities
-const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email.trim())
-}
+// State to hold form data
+const subject = ref('');
+const message = ref('');
 
-// Update Handlers
+// Update handlers for email, subject, and message
 const updateRecipient = (newRecipient) => {
-  recipient.value = newRecipient
-  recipientsList.value = [newRecipient]
-}
+  recipient.value = newRecipient;
+  recipientsList.value = [newRecipient];  // Update recipientsList to contain just the single email
+};
 
 const updateEmails = (newEmails) => {
-  recipientsList.value = newEmails.length === 1 && newEmails[0] 
-    ? [newEmails[0].trim()] 
-    : newEmails
-}
-
-const updateSubject = (newSubject) => {
-  subject.value = newSubject
-}
-
-const updateMessage = (newMessage) => {
-  message.value = newMessage
-}
-
-// Computed Properties for Validation
-const isFormValid = computed(() => {
-  return isValidEmail(recipient.value) && 
-         subject.value.trim() !== '' && 
-         message.value.trim() !== ''
-})
-
-const sendEmail = async () => {
-  try {
-    const response = await axios.post(
-      'https://praktika2025.onrender.com/send-email', 
-      {
-        recipient: recipient.value.trim(),
-        subject: subject.value.trim(),
-        message: message.value.trim(),
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    console.log("✅ Email sent successfully:", response.data);
-    alert('Email sent successfully!');
-  } catch (error) {
-    console.error('❌ Error sending email:', error.response?.data || error.message);
-    alert(`Failed to send email: ${error.response?.data?.details || error.message}`);
+  // If the newEmails array contains only one email, ensure it's a valid email
+  if (newEmails.length === 1 && newEmails[0]) {
+    recipientsList.value = [newEmails[0].trim()]; // Ensure trimming any whitespace
+  } else {
+    recipientsList.value = newEmails; // Otherwise, use all the emails
   }
 };
-</script>
 
-<style scoped>
-.disabled:opacity-50 {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-</style>
+
+const updateSubject = (newSubject) => {
+  subject.value = newSubject;
+};
+
+const updateMessage = (newMessage) => {
+  message.value = newMessage;
+};
+
+const sendEmail = async () => {
+  console.log("📩 Debugging recipient before sending:", recipient.value);
+
+  if (!recipient.value || recipient.value.trim() === '') {
+    alert("❌ Please enter a valid email!");
+    return;
+  }
+
+  const config = useRuntimeConfig();
+  const emailData = {
+    recipient: recipient.value.trim(),
+    subject: subject.value.trim(),
+    message: message.value.trim(),
+  };
+
+  console.log("📤 Sending email data:", JSON.stringify(emailData, null, 2));
+
+  try {
+    const response = await $fetch('/send-email', {
+      baseURL: config.public.apiBase,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: emailData,
+    });
+
+    console.log("✅ Email sent successfully:", response);
+    alert('Email sent successfully!');
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+    alert('Failed to send email.');
+  }
+};
+
+
+
+
+
+</script>

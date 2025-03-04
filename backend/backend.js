@@ -1,118 +1,64 @@
-import pg from 'pg';
 import express from 'express';
+import sgMail from '@sendgrid/mail';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import sgMail from '@sendgrid/mail';
+import axios from 'axios';
 
 dotenv.config();
 
-const { Pool } = pg;
 const app = express();
-
-// Comprehensive CORS Configuration
-const corsOptions = {
-  origin: [
-    'https://praktika2025-6dq2.vercel.app', 
-    'https://praktika2025-6dq2-52d2rvhg4-deividas-projects-55dbf9c2.vercel.app',
-    'http://localhost:3000'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-
-// CORS Middleware
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
-
+app.use(cors());
 app.use(express.json());
 
-// Initialize SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// PostgreSQL Connection Pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// Database Connection Test
-pool.connect()
-  .then(client => {
-    console.log("✅ Successfully connected to NeonDB");
-    client.release();
-  })
-  .catch(err => {
-    console.error("❌ Database Connection Error:", err);
-  });
-
-// Send Email Endpoint
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message } = req.body;
 
+  console.log("📤 Incoming request from frontend:", req.body); // ✅ Log frontend request
+
+  const recipientsArray = recipient
+    ? recipient.split(',').map(email => email.trim())
+    : [];
+
+  if (recipientsArray.length === 0 || recipientsArray.some(email => !email.includes('@'))) {
+    console.log("❌ Invalid recipient email");
+    return res.status(400).json({ error: 'Invalid recipient email(s)' });
+  }
+
+  const msg = {
+    to: recipientsArray,
+    from: 'deividaslitvinenko4@gmail.com',
+    subject,
+    text: message,
+    html: `<p>${message}</p>`,
+  };
+
   try {
-    // Log incoming request
-    console.log('Received email request:', { recipient, subject });
-
-    // Prepare email message for SendGrid
-    const msg = {
-      to: recipient,
-      from: 'deividaslitvinenko4@gmail.com', // Verified SendGrid sender
-      subject: subject,
-      text: message,
-      html: `<p>${message}</p>`
-    };
-
-    // Send email via SendGrid
     await sgMail.send(msg);
+    console.log("✅ Email sent successfully");
 
-    // Save to database
-    const saveResult = await pool.query(
-      'INSERT INTO messages (recipient_email, subject, description) VALUES ($1, $2, $3) RETURNING *',
-      [recipient, subject, message]
-    );
+    console.log("📥 Sending to database:", { recipient, subject, message });
 
-    res.status(200).json({
-      message: 'Email sent and saved successfully',
-      databaseRecord: saveResult.rows[0]
+    // ✅ Log before sending the request
+    console.log("🔄 Sending request to save email in DB...");
+
+    const response = await axios.post('http://localhost:3000/messages', {
+      recipient_email: recipient,
+      subject: subject,
+      description: message, // 🛑 FIX: This must match the DB column name!
     });
+
+    console.log("✅ Saved to DB:", response.data);
+    res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
   } catch (error) {
-    console.error('Error processing email:', error);
-    
-    // More detailed error response
-    res.status(500).json({ 
-      error: 'Failed to send email', 
-      details: error.message,
-      stack: error.stack
-    });
+    console.error('❌ Error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to send email or save to database' });
   }
 });
 
-// Health Check Endpoint
-app.get('/health', async (req, res) => {
-  try {
-    const client = await pool.connect();
-    await client.query('SELECT 1');
-    client.release();
 
-    res.status(200).json({
-      status: 'healthy',
-      database: 'connected',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Health check failed:', error);
-    res.status(500).json({
-      status: 'unhealthy',
-      error: error.message
-    });
-  }
-});
-
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-export default app;

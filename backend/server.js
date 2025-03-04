@@ -5,48 +5,48 @@ import pkg from 'pg';
 
 dotenv.config();
 const app = express();
-
-// Comprehensive CORS Configuration
-const corsOptions = {
-  origin: [
-    'https://praktika2025-6dq2.vercel.app', 
-    'https://praktika2025-6dq2-52d2rvhg4-deividas-projects-55dbf9c2.vercel.app',
-    'http://localhost:3000'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-
-// CORS Middleware
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
-
+app.use(cors());
 app.use(express.json());
+const { Client } = pkg;
 
-const { Pool } = pkg;
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Required for NeonDB
+const client = new Client({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
+  });
+  
+
+client.connect();
+
+app.post('/messages', async (req, res) => {
+  console.log("📩 Incoming request body:", req.body); // ✅ Log the data
+  const { subject, description, recipient_email } = req.body;
+
+  try {
+    const result = await client.query(
+      'INSERT INTO messages (subject, description, recipient_email) VALUES ($1, $2, $3) RETURNING *',
+      [subject, description, recipient_email]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("❌ Database Error:", error);
+    res.status(500).send('Error saving message');
+  }
 });
 
-// ✅ Test DB Connection
-pool.connect()
-  .then(() => console.log("✅ Connected to NeonDB"))
-  .catch(err => console.error("❌ Database Connection Error:", err));
 
-// ✅ Sample API Route
 app.get('/messages', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM messages ORDER BY created_at DESC');
+    const result = await client.query('SELECT * FROM messages ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (error) {
-    console.error("❌ Error fetching messages:", error);
+    console.error(error);
     res.status(500).send('Error fetching messages');
   }
 });
 
-app.listen(10000, () => {
-  console.log('🚀 Server running on port 10000');
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
 });
