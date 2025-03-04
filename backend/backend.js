@@ -34,7 +34,7 @@ app.post('/send-email', async (req, res) => {
     // Send email via SendGrid
     await sgMail.send(msg);
     console.log("✅ Email sent successfully");
-
+    console.log("📥 Saving to database:", { recipient, subject, message });
     res.status(200).json({ success: true, message: 'Email sent successfully' });
   } catch (error) {
     console.error('❌ SendGrid error:', error.response?.body || error.message);
