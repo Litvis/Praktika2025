@@ -10,15 +10,13 @@ app.use(express.json());
 const { Client } = pkg;
 
 const client = new Client({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false } // Required for Render
   });
   
-
-client.connect();
+  client.connect()
+    .then(() => console.log("✅ Connected to Render PostgreSQL"))
+    .catch(err => console.error("❌ Database Connection Error:", err));
 
 app.post('/messages', async (req, res) => {
     console.log("📩 Incoming request body:", req.body); // ✅ Log the data
