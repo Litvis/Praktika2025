@@ -43,7 +43,8 @@ app.post('/send-email', async (req, res) => {
     // ✅ Log before sending the request
     console.log("🔄 Sending request to save email in DB...");
 
-    const response = await axios.post('http://localhost:3000/messages', {
+    const response = await axios.post(`${process.env.BACKEND_URL}/messages`, {
+
       recipient_email: recipient,
       subject: subject,
       description: message, // 🛑 FIX: This must match the DB column name!
@@ -52,9 +53,19 @@ app.post('/send-email', async (req, res) => {
     console.log("✅ Saved to DB:", response.data);
     res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
   } catch (error) {
-    console.error('❌ Error:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to send email or save to database' });
-  }
+    console.error('❌ Error:', error); // 👈 This is not detailed enough
+
+    if (error.response) {
+        console.error('🔴 Response Error:', error.response.data); // Log API response error
+    } else if (error.request) {
+        console.error('🟠 Request Error:', error.request); // Log if the request failed
+    } else {
+        console.error('⚠️ General Error:', error.message); // Log any other errors
+    }
+
+    res.status(500).json({ error: 'Failed to send email or save to database', details: error.message });
+}
+
 });
 
 
