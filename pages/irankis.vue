@@ -108,13 +108,12 @@ const sendEmail = async () => {
   console.log("📤 Sending email data:", JSON.stringify(emailData, null, 2));
 
   try {
-    const response = await $fetch('/messages', {
-  baseURL: config.public.apiBase,
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: emailData,
-});
-
+    const response = await $fetch('/send-email', {
+      baseURL: config.public.apiBase,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: emailData,
+    });
 
     console.log("✅ Email sent successfully:", response);
     alert('Email sent successfully!');
