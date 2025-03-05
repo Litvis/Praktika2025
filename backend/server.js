@@ -10,8 +10,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Set up SendGrid API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+// Set up PostgreSQL client
 const { Client } = pkg;
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
@@ -24,6 +26,7 @@ app.post('/send-email', async (req, res) => {
   const { recipient, subject, message } = req.body;
   console.log("📤 Incoming request from frontend:", req.body);
 
+  // Validate recipient email(s)
   const recipientsArray = recipient
     ? recipient.split(',').map(email => email.trim())
     : [];
@@ -42,16 +45,18 @@ app.post('/send-email', async (req, res) => {
   };
 
   try {
+    // Send email via SendGrid
     await sgMail.send(msg);
     console.log("✅ Email sent successfully");
 
-    // Instead of making an HTTP request to /messages, insert directly:
+    // Save the email data to the database
     const dbResult = await client.query(
       'INSERT INTO messages (subject, description, recipient_email) VALUES ($1, $2, $3) RETURNING *',
       [subject, message, recipient]
     );
     console.log("✅ Saved to DB:", dbResult.rows[0]);
 
+    // Respond with success message
     res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
   } catch (error) {
     console.error('❌ Error:', error);
@@ -59,6 +64,7 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
+// Start the server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
