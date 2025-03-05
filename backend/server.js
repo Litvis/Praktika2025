@@ -1,50 +1,65 @@
 import express from 'express';
+import sgMail from '@sendgrid/mail';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pkg from 'pg';
 
 dotenv.config();
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 const { Client } = pkg;
-
 const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // ✅ Fix SSL issue
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });
-
-  
 
 client.connect();
 
-app.post('/messages', async (req, res) => {
-  console.log("📩 Incoming request body:", req.body); // ✅ Log the data
-  const { subject, description, recipient_email } = req.body;
+app.post('/send-email', async (req, res) => {
+  const { recipient, subject, message } = req.body;
+  console.log("📤 Incoming request from frontend:", req.body);
+
+  const recipientsArray = recipient
+    ? recipient.split(',').map(email => email.trim())
+    : [];
+
+  if (recipientsArray.length === 0 || recipientsArray.some(email => !email.includes('@'))) {
+    console.log("❌ Invalid recipient email");
+    return res.status(400).json({ error: 'Invalid recipient email(s)' });
+  }
+
+  const msg = {
+    to: recipientsArray,
+    from: 'deividaslitvinenko4@gmail.com',
+    subject,
+    text: message,
+    html: `<p>${message}</p>`,
+  };
 
   try {
-    const result = await client.query(
+    await sgMail.send(msg);
+    console.log("✅ Email sent successfully");
+
+    // Instead of making an HTTP request to /messages, insert directly:
+    const dbResult = await client.query(
       'INSERT INTO messages (subject, description, recipient_email) VALUES ($1, $2, $3) RETURNING *',
-      [subject, description, recipient_email]
+      [subject, message, recipient]
     );
-    res.json(result.rows[0]);
+    console.log("✅ Saved to DB:", dbResult.rows[0]);
+
+    res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
   } catch (error) {
-    console.error("❌ Database Error:", error);
-    res.status(500).send('Error saving message');
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to send email or save to database', details: error.message });
   }
 });
 
-
-app.get('/messages', async (req, res) => {
-  try {
-    const result = await client.query('SELECT * FROM messages ORDER BY created_at DESC');
-    res.json(result.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Error fetching messages');
-  }
-});
-
-app.listen(3000, () => {
-  console.log('Server running on port 3000');
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
