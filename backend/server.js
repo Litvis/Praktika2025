@@ -1,9 +1,12 @@
 import express from 'express';
 import sgMail from '@sendgrid/mail';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import pkg from 'pg';
-
+import './auth/google.js'; // Ensure Google OAuth strategy is imported
+import authRoutes from './routes/OAuth.js'; // Import OAuth routes
+import session from 'express-session';
+import passport from 'passport';
+import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
@@ -64,7 +67,17 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
-// Start the server
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(authRoutes);
+
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
