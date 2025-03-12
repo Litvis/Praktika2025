@@ -61,11 +61,13 @@ app.post('/send-email', async (req, res) => {
     console.log(`📎 Processing ${attachments.length} attachments`);
     
     msg.attachments = attachments.map(attachment => ({
-      content: attachment.content, // Base64 content
+      content: attachment.content,
       filename: attachment.filename,
       type: attachment.type,
       disposition: attachment.disposition || 'attachment',
-      content_id: attachment.content_id ? `<${attachment.content_id}>` : undefined
+      content_id: attachment.content_id ? 
+        (attachment.content_id.startsWith('<') ? attachment.content_id : `<${attachment.content_id}>`) : 
+        undefined
     }));
   }
 
