@@ -28,33 +28,46 @@ const client = new Client({
 client.connect();
 
 // Updated /send-email endpoint to handle attachments
+// Add this logging to your backend
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
-  console.log("📤 Incoming request from frontend:", {
-    recipient,
-    subject,
-    messageLength: message ? message.length : 0,
-    attachmentsCount: attachments ? attachments.length : 0
-  });
-
-  // Validate recipient email(s)
-  const recipientsArray = recipient
-    ? recipient.split(',').map(email => email.trim())
-    : [];
-
-  if (recipientsArray.length === 0 || recipientsArray.some(email => !email.includes('@'))) {
-    console.log("❌ Invalid recipient email");
-    return res.status(400).json({ error: 'Invalid recipient email(s)' });
+  
+  console.log("📧 Processing email request");
+  console.log("- Subject:", subject);
+  console.log("- Recipient:", recipient);
+  
+  if (attachments && attachments.length > 0) {
+    console.log("- Attachment details:");
+    attachments.forEach((attachment, index) => {
+      console.log(`  [${index}] ${attachment.filename}, ${attachment.type}, ${attachment.disposition}, content_id: ${attachment.content_id}`);
+    });
+    
+    // Format the attachments correctly for SendGrid
+    const formattedAttachments = attachments.map(attachment => ({
+      content: attachment.content,
+      filename: attachment.filename,
+      type: attachment.type,
+      disposition: attachment.disposition || 'attachment',
+      content_id: attachment.disposition === 'inline' ? 
+        `<${attachment.content_id}>` : attachment.content_id
+    }));
+    
+    console.log("- Formatted attachment content_ids:");
+    formattedAttachments.forEach((att, i) => {
+      console.log(`  [${i}] content_id: ${att.content_id}`);
+    });
+    
+    // Use the formatted attachments in your msg object
+    const msg = {
+      to: recipientsArray,
+      from: 'deividaslitvinenko4@gmail.com',
+      subject,
+      text: message.replace(/<[^>]*>/g, ''),
+      html: message,
+      attachments: formattedAttachments
+    };
   }
-
-  // Prepare the email
-  const msg = {
-    to: recipientsArray,
-    from: 'deividaslitvinenko4@gmail.com',
-    subject,
-    text: message.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-    html: message,
-  };
+  
 
   // Add attachments if they exist
   if (attachments && attachments.length > 0) {

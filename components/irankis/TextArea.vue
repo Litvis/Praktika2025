@@ -109,11 +109,18 @@
       </div>
 
       <!-- Send Button -->
-      <div class="mt-4 flex justify-end">
-        <button @click="sendEmail" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-          Siųsti laišką
-        </button>
-      </div>
+<!-- Add the test button inside your TextArea component's template -->
+<div class="mt-4 flex justify-end">
+  <button @click="sendEmail" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+    Siųsti laišką
+  </button>
+  <button @click="sendTestEmail" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 ml-2 rounded">
+    Test Email
+  </button>
+  <button @click="() => alert('Regular button clicked')" class="bg-red-500 text-white px-4 py-2 rounded">
+  Debug Button
+</button>
+</div>
     </div>
   </div>
 </template>
@@ -399,10 +406,32 @@ const processImagesForEmail = (htmlContent) => {
 
 const sendEmail = async () => {
   try {
+    console.log("📩 sendEmail function called in TextArea");
+  console.log("Current recipient:", props.recipient);
+  console.log("Current subject:", document.getElementById('inputField').value);
     const emailContent = document.getElementById('editor').innerHTML;
     const emailSubject = document.getElementById('inputField').value;
     
-    // Validations remain the same...
+    // Make sure we have a subject
+    if (!emailSubject.trim()) {
+      alert('Prašome įvesti laiško temą');
+      return;
+    }
+    
+    // Make sure we have either content or attachments
+    if (!emailContent.trim() && attachedFiles.value.length === 0) {
+      alert('Prašome įvesti laišką arba pridėti priedų');
+      return;
+    }
+    
+    // Log the recipient from props for debugging
+    console.log("📧 Using recipient from props:", props.recipient);
+    
+    // If no recipient is provided, show an error
+    if (!props.recipient || props.recipient.trim() === '') {
+      alert('Prašome įvesti gavėjo el. paštą');
+      return;
+    }
     
     // Create a new div for processing the content
     const tempDiv = document.createElement('div');
@@ -411,6 +440,16 @@ const sendEmail = async () => {
     // Get all image elements
     const images = tempDiv.querySelectorAll('img');
     const attachments = [];
+    
+    // Show loading state
+    const sendButton = document.querySelector('button.bg-blue-500');
+    let buttonOriginalText = 'Siųsti laišką'; // Default value
+    
+    if (sendButton) {
+      buttonOriginalText = sendButton.textContent;
+      sendButton.textContent = 'Siunčiama...';
+      sendButton.disabled = true;
+    }
     
     // First add regular file attachments
     for (const file of attachedFiles.value) {
@@ -507,6 +546,70 @@ const sendEmail = async () => {
       sendButton.textContent = 'Siųsti laišką';
       sendButton.disabled = false;
     }
+  }
+};
+
+// Add test function
+const sendTestEmail = async () => {
+  try {
+    console.log("Sending test email to:", props.recipient);
+    
+    // Create a more robust HTML structure with inline styling
+    const simpleHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
+        <h2 style="color: #333;">Test Email with Image</h2>
+        <p style="color: #666; line-height: 1.5;">This is a test email to verify image handling. You should see a colored rectangle below:</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <img src="cid:testimage" width="300" height="200" alt="Test Image" 
+               style="border: 1px solid #ddd; max-width: 100%;">
+        </div>
+        
+        <p style="color: #666; line-height: 1.5;">If you don't see the image above, there might be an issue with how inline images are being processed.</p>
+      </div>
+    `;
+
+    // This is a simple colored rectangle (red)
+    const testImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAP0SURBVHhe7dUxAQAwDMCwUfqXNZHOHgjg5ws4IQgkCIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSLTdWNdGXJnblAAAAABJRU5ErkJggg==";
+
+    // Prepare the email data with explicit content-id markup
+    const testEmailData = {
+      recipient: props.recipient.trim(),
+      subject: "Test Email with Image - " + new Date().toISOString(),
+      message: simpleHtml,
+      attachments: [{
+        content: testImageBase64,
+        filename: "test-red-rectangle.png",
+        type: "image/png",
+        disposition: "inline",
+        content_id: "testimage" // This ID must match the cid: in the image src
+      }]
+    };
+
+    console.log("📧 Sending test email with following data:", {
+      recipient: testEmailData.recipient,
+      subject: testEmailData.subject,
+      attachments: testEmailData.attachments.length
+    });
+    
+    const response = await fetch('https://praktika2025.onrender.com/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testEmailData)
+    });
+
+    const result = await response.json();
+    
+    if (response.ok) {
+      window.alert('Test email sent successfully!'); 
+      console.log("✅ Test email sent result:", result);
+    } else {
+      window.alert(`Error: ${result.error || 'Failed to send test email'}`);
+      console.error("❌ Error sending test email:", result);
+    }
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    window.alert('Error sending test email: ' + error.message);
   }
 };
 // Add image click event listener after mounting
