@@ -35,103 +35,63 @@ app.post('/send-email', async (req, res) => {
   console.log("📧 Processing email request");
   console.log("- Subject:", subject);
   console.log("- Recipient:", recipient);
-  
-  if (attachments && attachments.length > 0) {
-    console.log("- Attachment details:");
-    attachments.forEach((attachment, index) => {
-      console.log(`  [${index}] ${attachment.filename}, ${attachment.type}, ${attachment.disposition}, content_id: ${attachment.content_id}`);
-    });
-    
-    // Format the attachments correctly for SendGrid
-    const formattedAttachments = attachments.map(attachment => ({
-      content: attachment.content,
-      filename: attachment.filename,
-      type: attachment.type,
-      disposition: attachment.disposition || 'attachment',
-      content_id: attachment.disposition === 'inline' ? 
-        `<${attachment.content_id}>` : attachment.content_id
-    }));
-    
-    console.log("- Formatted attachment content_ids:");
-    formattedAttachments.forEach((att, i) => {
-      console.log(`  [${i}] content_id: ${att.content_id}`);
-    });
-    
-    // Use the formatted attachments in your msg object
+
+  try {
+    // Validate recipient email(s)
+    const recipientsArray = recipient
+      ? recipient.split(',').map(email => email.trim())
+      : [];
+
+    if (recipientsArray.length === 0 || recipientsArray.some(email => !email.includes('@'))) {
+      console.log("❌ Invalid recipient email");
+      return res.status(400).json({ error: 'Invalid recipient email(s)' });
+    }
+
+    // Prepare base email object
     const msg = {
       to: recipientsArray,
       from: 'deividaslitvinenko4@gmail.com',
       subject,
-      text: message.replace(/<[^>]*>/g, ''),
+      text: message.replace(/<[^>]*>/g, ''), // Strip HTML for text version
       html: message,
-      attachments: formattedAttachments
     };
-  }
-  
-
-  // Add attachments if they exist
-  if (attachments && attachments.length > 0) {
-    console.log(`📎 Processing ${attachments.length} attachments`);
     
-    msg.attachments = attachments.map(attachment => ({
-      content: attachment.content,
-      filename: attachment.filename,
-      type: attachment.type,
-      disposition: attachment.disposition || 'attachment',
-      content_id: attachment.content_id ? 
-        (attachment.content_id.startsWith('<') ? attachment.content_id : `<${attachment.content_id}>`) : 
-        undefined
-    }));
-  }
-
-  try {
+    // Process attachments if they exist
+    if (attachments && attachments.length > 0) {
+      console.log("- Attachment details:");
+      attachments.forEach((attachment, index) => {
+        console.log(`  [${index}] ${attachment.filename}, ${attachment.type}, ${attachment.disposition}, content_id: ${attachment.content_id}`);
+      });
+      
+      // Format the attachments correctly for SendGrid
+      msg.attachments = attachments.map(attachment => ({
+        content: attachment.content,
+        filename: attachment.filename,
+        type: attachment.type,
+        disposition: attachment.disposition || 'attachment',
+        content_id: attachment.disposition === 'inline' ? 
+          `<${attachment.content_id}>` : attachment.content_id
+      }));
+      
+      console.log("- Formatted attachment content_ids:");
+      msg.attachments.forEach((att, i) => {
+        console.log(`  [${i}] content_id: ${att.content_id}`);
+      });
+    }
+    
     // Send email via SendGrid
     await sgMail.send(msg);
     console.log("✅ Email sent successfully");
 
-    // Prepare attachment names for database if they exist
+    // Save the email data to the database
     const attachmentNames = attachments && attachments.length > 0
       ? attachments.map(a => a.filename).join(', ')
       : null;
-
-    // Check if attachments column exists in messages table
-    try {
-      const columnCheckResult = await client.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name='messages' AND column_name='attachments'
-      `);
       
-      // If attachments column doesn't exist, add it
-      if (columnCheckResult.rows.length === 0) {
-        console.log("⚙️ Adding attachments column to messages table");
-        await client.query('ALTER TABLE messages ADD COLUMN attachments TEXT');
-      }
-    } catch (schemaError) {
-      console.warn("⚠️ Unable to check/update schema:", schemaError.message);
-      // Continue anyway - we'll try to insert without the attachments column
-    }
-
-    // Insert into database with or without attachments
-    let dbResult;
-    try {
-      dbResult = await client.query(
-        'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
-        [subject, message, recipient, attachmentNames]
-      );
-    } catch (insertError) {
-      // If the insert fails (possibly due to missing attachments column), try without it
-      if (insertError.message.includes('attachments')) {
-        console.warn("⚠️ Falling back to insert without attachments column");
-        dbResult = await client.query(
-          'INSERT INTO messages (subject, description, recipient_email) VALUES ($1, $2, $3) RETURNING *',
-          [subject, message, recipient]
-        );
-      } else {
-        throw insertError; // Re-throw if it's not related to the attachments column
-      }
-    }
-    
+    const dbResult = await client.query(
+      'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
+      [subject, message, recipient, attachmentNames]
+    );
     console.log("✅ Saved to DB:", dbResult.rows[0]);
 
     // Respond with success message
