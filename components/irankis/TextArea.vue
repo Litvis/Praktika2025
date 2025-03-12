@@ -366,6 +366,8 @@ const alignImageRight = () => {
 // Your existing imports and component setup...
 
 // Replace or add this sendEmail function to your component
+// Update the sendEmail function in your TextArea component
+
 const sendEmail = async () => {
   try {
     const emailContent = document.getElementById('editor').innerHTML;
@@ -383,9 +385,14 @@ const sendEmail = async () => {
       return;
     }
     
-    // Get recipient email from your existing logic
-    // For example, if you have a recipient input field:
-    // const recipientEmail = document.getElementById('recipientField').value;
+    // Log the recipient from props for debugging
+    console.log("📧 Using recipient from props:", props.recipient);
+    
+    // If no recipient is provided, show an error
+    if (!props.recipient || props.recipient.trim() === '') {
+      alert('Prašome įvesti gavėjo el. paštą');
+      return;
+    }
     
     // Prepare attachments for API
     const attachments = [];
@@ -431,17 +438,21 @@ const sendEmail = async () => {
     
     // Show loading state
     const sendButton = document.querySelector('button.bg-blue-500');
-    const originalText = sendButton.textContent;
-    sendButton.textContent = 'Siunčiama...';
-    sendButton.disabled = true;
+    if (sendButton) {
+      const originalText = sendButton.textContent;
+      sendButton.textContent = 'Siunčiama...';
+      sendButton.disabled = true;
+    }
     
     // Prepare the email data
     const emailData = {
-      recipient: props.recipient || 'recipient@example.com', // Use prop or default 
+      recipient: props.recipient.trim(), // Use the recipient from props
       subject: emailSubject,
       message: tempDiv.innerHTML, // Use the modified HTML with CIDs
       attachments: attachments
     };
+    
+    console.log("📤 Sending email to:", emailData.recipient);
     
     // Make API call to your backend
     const response = await fetch('https://praktika2025.onrender.com/send-email', {
@@ -453,8 +464,10 @@ const sendEmail = async () => {
     });
     
     // Reset button
-    sendButton.textContent = originalText;
-    sendButton.disabled = false;
+    if (sendButton) {
+      sendButton.textContent = originalText;
+      sendButton.disabled = false;
+    }
     
     const result = await response.json();
     
@@ -465,6 +478,9 @@ const sendEmail = async () => {
       document.getElementById('editor').innerHTML = '';
       attachedFiles.value = [];
       inlineImages.value = [];
+      
+      // Emit an event to notify the parent component of successful sending
+      emit('emailSent', true);
     } else {
       alert(`Klaida: ${result.error || 'Nepavyko išsiųsti laiško'}`);
     }
@@ -474,19 +490,11 @@ const sendEmail = async () => {
     
     // Reset button in case of error
     const sendButton = document.querySelector('button.bg-blue-500');
-    sendButton.textContent = 'Siųsti laišką';
-    sendButton.disabled = false;
+    if (sendButton) {
+      sendButton.textContent = 'Siųsti laišką';
+      sendButton.disabled = false;
+    }
   }
-};
-
-// Make sure you have this helper function
-const fileToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-  });
 };
 // Add image click event listener after mounting
 onMounted(() => {
@@ -517,7 +525,6 @@ const handleOutsideClick = (event) => {
   }
 };
 
-// Define props
 const props = defineProps({
   subject: {
     type: String,
@@ -527,6 +534,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  recipient: {
+    type: String,
+    required: true,
+  }
 });
 
 // Define emits for updating subject and message

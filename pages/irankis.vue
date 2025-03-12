@@ -37,7 +37,8 @@
       <div class="w-full p-16">
         <TextArea 
           :subject="subject" 
-          :message="message" 
+          :message="message"
+          :recipient="recipient"
           @updateSubject="updateSubject" 
           @updateMessage="updateMessage" 
         />
