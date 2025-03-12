@@ -63,15 +63,25 @@ app.post('/send-email', async (req, res) => {
         console.log(`  [${index}] ${attachment.filename}, ${attachment.type}, ${attachment.disposition}, content_id: ${attachment.content_id}`);
       });
       
-      // Format the attachments correctly for SendGrid
-      msg.attachments = attachments.map(attachment => ({
-        content: attachment.content,
-        filename: attachment.filename,
-        type: attachment.type,
-        disposition: attachment.disposition || 'attachment',
-        content_id: attachment.disposition === 'inline' ? 
-          `<${attachment.content_id}>` : attachment.content_id
-      }));
+// In your send-email endpoint:
+// Format the attachments correctly for SendGrid
+msg.attachments = attachments.map(attachment => {
+  const contentId = attachment.content_id;
+  
+  // For inline attachments, make sure content_id has angle brackets
+  // but don't duplicate them if they're already there
+  const formattedContentId = attachment.disposition === 'inline' 
+    ? (contentId.startsWith('<') ? contentId : `<${contentId}>`)
+    : contentId;
+  
+  return {
+    content: attachment.content,
+    filename: attachment.filename,
+    type: attachment.type,
+    disposition: attachment.disposition || 'attachment',
+    content_id: formattedContentId
+  };
+});
       
       console.log("- Formatted attachment content_ids:");
       msg.attachments.forEach((att, i) => {

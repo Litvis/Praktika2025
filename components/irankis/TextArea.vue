@@ -552,16 +552,17 @@ const sendEmail = async () => {
 // Add test function
 const sendTestEmail = async () => {
   try {
-    console.log("Sending test email to:", props.recipient);
+    // Create a unique content ID that works reliably
+    const uniqueId = `img_${Date.now()}`;
     
-    // Create a more robust HTML structure with inline styling
+    // Create HTML with proper image reference
     const simpleHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
         <h2 style="color: #333;">Test Email with Image</h2>
         <p style="color: #666; line-height: 1.5;">This is a test email to verify image handling. You should see a colored rectangle below:</p>
         
         <div style="text-align: center; margin: 30px 0;">
-          <img src="cid:testimage" width="300" height="200" alt="Test Image" 
+          <img src="cid:${uniqueId}" width="300" height="200" alt="Test Image" 
                style="border: 1px solid #ddd; max-width: 100%;">
         </div>
         
@@ -569,10 +570,10 @@ const sendTestEmail = async () => {
       </div>
     `;
 
-    // This is a simple colored rectangle (red)
-    const testImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAP0SURBVHhe7dUxAQAwDMCwUfqXNZHOHgjg5ws4IQgkCIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSLTdWNdGXJnblAAAAABJRU5ErkJggg==";
+    // Red rectangle image
+    const testImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAP0SURBVHhe7dUxAQAwDMCwUfqXNZHOHgjg5ws4IQgkCIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSLTdWNdGXJnblAAAAABJRU5ErkJggg==";
 
-    // Prepare the email data with explicit content-id markup
+    // Prepare email data
     const testEmailData = {
       recipient: props.recipient.trim(),
       subject: "Test Email with Image - " + new Date().toISOString(),
@@ -582,7 +583,7 @@ const sendTestEmail = async () => {
         filename: "test-red-rectangle.png",
         type: "image/png",
         disposition: "inline",
-        content_id: "testimage" // This ID must match the cid: in the image src
+        content_id: uniqueId // Important: match this to the img src
       }]
     };
 
@@ -592,6 +593,7 @@ const sendTestEmail = async () => {
       attachments: testEmailData.attachments.length
     });
     
+    // Send email
     const response = await fetch('https://praktika2025.onrender.com/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
