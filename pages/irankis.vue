@@ -49,11 +49,11 @@
         />
         <!-- Show attached files -->
         <div v-if="attachedFiles.length > 0" class="mt-4">
-          <p>Attached Files:</p>
+          <p>Pridėti failai:</p>
           <ul>
-            <li v-for="(file, index) in attachedFiles" :key="index">
-              {{ file.name }} 
-              <button @click="removeFile(index)" class="text-red-500 ml-2">Remove</button>
+            <li v-for="(file, index) in attachedFiles" :key="index" class="flex items-center">
+              {{ file.name }} ({{ formatFileSize(file.size) }})
+              <button @click="removeFile(index)" class="text-red-500 ml-2">Pašalinti</button>
             </li>
           </ul>
         </div>
@@ -61,7 +61,7 @@
           @click="sendEmail" 
           class="border-2 p-4 w-48 rounded-xl bg-green-700 text-white font-bold text-xl ml-2"
         >
-          Siusti
+          Siųsti
         </button>
       </div>
     </div>
@@ -71,10 +71,47 @@
 <script setup>
 import { ref } from 'vue';
 
-// ... previous code remains the same
+// State for current option and recipient
+const currentOption = ref('email');
+const recipient = ref('');
+const recipientsList = ref([]); // Holds the list of email recipients (can be single or multiple)
+
+// Options for navigation
+const options = [
+  { id: 'email', label: 'Vienam' },
+  { id: 'csv', label: 'CSV' },
+  { id: 'group', label: 'Grupei' },
+];
+
+// State to hold form data
+const subject = ref('');
+const message = ref('');
 
 // Add state for attachments
 const attachedFiles = ref([]);
+
+// Update handlers for email, subject, and message
+const updateRecipient = (newRecipient) => {
+  recipient.value = newRecipient;
+  recipientsList.value = [newRecipient];  // Update recipientsList to contain just the single email
+};
+
+const updateEmails = (newEmails) => {
+  // If the newEmails array contains only one email, ensure it's a valid email
+  if (newEmails.length === 1 && newEmails[0]) {
+    recipientsList.value = [newEmails[0].trim()]; // Ensure trimming any whitespace
+  } else {
+    recipientsList.value = newEmails; // Otherwise, use all the emails
+  }
+};
+
+const updateSubject = (newSubject) => {
+  subject.value = newSubject;
+};
+
+const updateMessage = (newMessage) => {
+  message.value = newMessage;
+};
 
 // Function to handle file uploads
 const handleFileUpload = (event) => {
@@ -85,6 +122,17 @@ const handleFileUpload = (event) => {
 // Function to remove a file
 const removeFile = (index) => {
   attachedFiles.value.splice(index, 1);
+};
+
+// Format file size for display
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) {
+    return bytes + ' B';
+  } else if (bytes < 1048576) {
+    return (bytes / 1024).toFixed(2) + ' KB';
+  } else {
+    return (bytes / 1048576).toFixed(2) + ' MB';
+  }
 };
 
 const sendEmail = async () => {
