@@ -27,88 +27,41 @@ const client = new Client({
 
 client.connect();
 
+const processImagesForEmail = (htmlContent) => {
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlContent;
+  
+  const images = tempDiv.querySelectorAll('img');
+  
+  images.forEach((img) => {
+    // Ensure the image is a base64 data URL
+    if (img.src.startsWith('data:image')) {
+      // No further processing needed - base64 images work directly in emails
+    }
+  });
+  
+  return tempDiv.innerHTML;
+};
+
 // Updated /send-email endpoint to handle attachments
 // Add this logging to your backend
 app.post('/send-email', async (req, res) => {
-  const { recipient, subject, message, attachments } = req.body;
+  const { recipient, subject, message } = req.body;
   
-  console.log("📧 Processing email request");
-  console.log("- Subject:", subject);
-  console.log("- Recipient:", recipient);
-
   try {
-    // Validate recipient email(s)
-    const recipientsArray = recipient
-      ? recipient.split(',').map(email => email.trim())
-      : [];
-
-    if (recipientsArray.length === 0 || recipientsArray.some(email => !email.includes('@'))) {
-      console.log("❌ Invalid recipient email");
-      return res.status(400).json({ error: 'Invalid recipient email(s)' });
-    }
-
-    // Prepare base email object
     const msg = {
-      to: recipientsArray,
-      from: 'deividaslitvinenko4@gmail.com',
+      to: recipient,
+      from: 'deividaslitvinenko4@gmail.com', // Your verified SendGrid sender email
       subject,
-      text: message.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-      html: message,
+      html: message  // Directly use the HTML with base64 image
     };
     
-    // Process attachments if they exist
-    if (attachments && attachments.length > 0) {
-      console.log("- Attachment details:");
-      attachments.forEach((attachment, index) => {
-        console.log(`  [${index}] ${attachment.filename}, ${attachment.type}, ${attachment.disposition}, content_id: ${attachment.content_id}`);
-      });
-      
-// In your send-email endpoint:
-// Format the attachments correctly for SendGrid
-msg.attachments = attachments.map(attachment => {
-  const contentId = attachment.content_id;
-  
-  // For inline attachments, make sure content_id has angle brackets
-  // but don't duplicate them if they're already there
-  const formattedContentId = attachment.disposition === 'inline' 
-    ? (contentId.startsWith('<') ? contentId : `<${contentId}>`)
-    : contentId;
-  
-  return {
-    content: attachment.content,
-    filename: attachment.filename,
-    type: attachment.type,
-    disposition: attachment.disposition || 'attachment',
-    content_id: formattedContentId
-  };
-});
-      
-      console.log("- Formatted attachment content_ids:");
-      msg.attachments.forEach((att, i) => {
-        console.log(`  [${i}] content_id: ${att.content_id}`);
-      });
-    }
-    
-    // Send email via SendGrid
     await sgMail.send(msg);
-    console.log("✅ Email sent successfully");
-
-    // Save the email data to the database
-    const attachmentNames = attachments && attachments.length > 0
-      ? attachments.map(a => a.filename).join(', ')
-      : null;
-      
-    const dbResult = await client.query(
-      'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
-      [subject, message, recipient, attachmentNames]
-    );
-    console.log("✅ Saved to DB:", dbResult.rows[0]);
-
-    // Respond with success message
-    res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
+    
+    res.status(200).json({ success: true, message: 'Email sent successfully' });
   } catch (error) {
-    console.error('❌ Error:', error);
-    res.status(500).json({ error: 'Failed to send email or save to database', details: error.message });
+    console.error('Email sending error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -218,51 +218,26 @@ const insertImageIntoEditor = (file) => {
   reader.onload = (e) => {
     const img = document.createElement('img');
     
-    // Set explicit attributes instead of just styles
-    img.src = e.target.result;
-    img.width = 600;
-    img.height = 'auto';
-    img.alt = file.name || 'Email Image';
+    // Use base64 directly in the src attribute
+    img.src = e.target.result; // This is already base64
     
-    // These are HTML attributes, not styles
-    img.setAttribute('border', '0');
-    img.setAttribute('hspace', '0');
-    img.setAttribute('vspace', '0');
+    // Add important email-friendly attributes
+    img.setAttribute('alt', file.name || 'Embedded Image');
     
-    // Still set styles for additional support
+    // Inline styles for email compatibility
     img.style.maxWidth = '100%';
     img.style.height = 'auto';
     img.style.display = 'block';
     img.style.marginLeft = 'auto';
     img.style.marginRight = 'auto';
-    img.style.border = 'none';
     
-    // Add a class for easier identification
-    img.className = 'email-inline-image';
-    
-    // Store the image data
-    inlineImages.value.push({
-      file: file,
-      id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      dataUrl: e.target.result
-    });
-    
-    // Insert with proper spacing
+    // Insert into editor
     const editor = document.getElementById('editor');
-    if (editor) {
-      // Add proper spacing
-      editor.appendChild(document.createElement('br'));
-      editor.appendChild(img);
-      editor.appendChild(document.createElement('br'));
-      
-      // Make it resizable
-      makeImageResizable(img);
-    }
+    editor.appendChild(img);
   };
   
   reader.readAsDataURL(file);
 };
-
 // Resizing logic with interact.js
 const makeImageResizable = (img) => {
   interact(img)
