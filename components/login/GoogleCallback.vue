@@ -14,7 +14,7 @@
       if (code) {
         try {
           // Send the code to the backend to complete the authentication
-          const response = await fetch('http://localhost:3001/auth/google/callback', {
+          const response = await fetch('https://praktika2025.onrender.com/auth/google/callback', {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
