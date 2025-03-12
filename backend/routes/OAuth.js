@@ -15,7 +15,7 @@ router.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
     // On successful authentication, redirect to the frontend
-    res.redirect('https://praktika2025.onrender.com/dashboard'); // This should redirect to the frontend's dashboard
+    res.redirect('https://praktika2025.vercel.app/irankis'); // This should redirect to the frontend's dashboard
   }
 );
 
