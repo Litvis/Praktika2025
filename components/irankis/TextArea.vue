@@ -1,3 +1,8 @@
+Looking at your Vue.js component, I can see you already have image insertion functionality for the rich text editor, but you need to add the ability to actually attach files and images when sending the email via SendGrid. Let me help implement that functionality.
+
+Here's how you can add file attachment handling to your existing code:
+
+```javascript
 <template>
   <div class="flex flex-col items-center justify-center w-full p-4">
     <div class="w-full border p-4 rounded-lg shadow-lg bg-white text-gray-700 font-arial text-base leading-6">
@@ -28,7 +33,6 @@
       >
       </div>
 
-  
       <!-- Controls -->
       <div class="flex gap-4 items-center justify-center mt-4">
         <!-- Bold Button -->
@@ -57,15 +61,22 @@
         </button>
 
         <button @click="addImageFromURL" class="text-xl text-gray-700 hover:text-blue-500">
-  🖼️
-</button>
-        <input 
-          type="file" 
-          id="fileInput" 
-          accept="image/*" 
-          class="hidden" 
-          @change="handleFileUpload"
-        />
+          🖼️
+        </button>
+        <!-- Attachments Section -->
+        <div class="relative">
+          <button @click="triggerFileUpload" class="text-xl text-gray-700 hover:text-blue-500">
+            📎
+          </button>
+          <input 
+            type="file" 
+            id="fileInput" 
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" 
+            class="hidden" 
+            @change="handleFileUpload"
+            multiple
+          />
+        </div>
 
         <!-- Alignment Controls -->
         <button @click="execCommand('justifyLeft')" class="text-xl text-gray-700 hover:text-blue-500">
@@ -87,7 +98,26 @@
         <button v-if="selectedImage" @click="alignImageRight" class="text-xl text-gray-700 hover:text-blue-500">
           <Icon icon="material-symbols:format-align-right" />
         </button>
+      </div>
 
+      <!-- Attachment List -->
+      <div v-if="attachedFiles.length > 0" class="mt-4 border-t pt-2">
+        <p class="font-bold ml-2 text-lg">Pridėti failai:</p>
+        <ul class="list-disc pl-6">
+          <li v-for="(file, index) in attachedFiles" :key="index" class="flex items-center gap-2">
+            <span>{{ file.name }} ({{ formatFileSize(file.size) }})</span>
+            <button @click="removeAttachment(index)" class="text-red-500 hover:text-red-700">
+              ❌
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Send Button -->
+      <div class="mt-4 flex justify-end">
+        <button @click="sendEmail" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          Siųsti laišką
+        </button>
       </div>
     </div>
   </div>
@@ -100,6 +130,8 @@ import interact from "interactjs";  // Import interact.js
 
 const isEditorFocused = ref(false); // Track if editor is focused
 const selectedImage = ref(null); // Track the selected image for alignment
+const attachedFiles = ref([]); // Store attached files
+const inlineImages = ref([]); // Track images displayed in the editor
 
 // Function to handle the editor focus
 const focusEditor = () => {
@@ -145,11 +177,81 @@ const addHyperlink = () => {
   }
 };
 
-// Function to trigger the file input for image upload
+// Function to trigger the file input for file uploads
 const triggerFileUpload = () => {
-  // Focus the editor field first to make sure the image is inserted in the editor
-  focusEditor();
   document.getElementById('fileInput').click();
+};
+
+// Function to handle file uploads
+const handleFileUpload = (event) => {
+  const files = event.target.files;
+  
+  if (files.length > 0) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Check if it's an image
+      if (file.type.startsWith('image/')) {
+        // Option to embed in editor or attach
+        if (confirm(`Ar norite įterpti ${file.name} į tekstą? Pasirinkite "Atmesti" jei norite pridėti kaip priedą.`)) {
+          insertImageIntoEditor(file);
+        } else {
+          // Add as attachment
+          attachedFiles.value.push(file);
+        }
+      } else {
+        // Non-image files can only be attachments
+        attachedFiles.value.push(file);
+      }
+    }
+  }
+  
+  // Reset the file input to allow the same file to be selected again
+  event.target.value = '';
+};
+
+// Function to insert an image into the editor
+const insertImageIntoEditor = (file) => {
+  const reader = new FileReader();
+  
+  reader.onload = (e) => {
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.cursor = 'move';
+    img.contentEditable = "false";
+    img.dataset.filename = file.name;
+    
+    // Store the image data for potential email sending
+    inlineImages.value.push({
+      file: file,
+      id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      dataUrl: e.target.result
+    });
+    
+    const editor = document.getElementById('editor');
+    if (editor) {
+      const selection = window.getSelection();
+      const range = selection.rangeCount ? selection.getRangeAt(0) : null;
+      
+      if (range) {
+        range.insertNode(img);
+        // Move the selection after the inserted image
+        range.setStartAfter(img);
+        range.setEndAfter(img);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        editor.appendChild(img);
+      }
+      
+      // Make the image resizable
+      makeImageResizable(img);
+    }
+  };
+  
+  reader.readAsDataURL(file);
 };
 
 // Function to add an image via URL
@@ -159,67 +261,77 @@ const addImageFromURL = () => {
   if (url) {
     const img = document.createElement('img');
     img.src = url;
-    img.style.minWidth = '400px'; // Ensure the image fits within the editor
-    img.style.height = '400px';
-    img.style.cursor = 'move'; // Image movement cursor
-    img.contentEditable = "false"; // Make image uneditable to allow resizing
-
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.cursor = 'move';
+    img.contentEditable = "false";
+    
     const editor = document.getElementById('editor');
     if (editor) {
       const selection = window.getSelection();
       const range = selection.rangeCount ? selection.getRangeAt(0) : null;
 
       if (range) {
-        range.deleteContents(); // Remove any selected content
-        range.insertNode(img); // Insert the image at the cursor position
+        range.deleteContents();
+        range.insertNode(img);
       } else {
-        editor.appendChild(img); // Append if no range is selected
+        editor.appendChild(img);
       }
 
-      // Make the image resizable using interact.js
       makeImageResizable(img);
     }
   }
 };
 
-
 // Resizing logic with interact.js
 const makeImageResizable = (img) => {
   interact(img)
     .resizable({
-      edges: { top: false, left: false, bottom: true, right: true },  // Enable resizing only from bottom-right corner
+      edges: { top: false, left: false, bottom: true, right: true },
       inertia: true,
       modifiers: [
         interact.modifiers.restrictSize({
-          min: { width: 50, height: 50 }, // Minimum size for the image
+          min: { width: 50, height: 50 },
         })
       ],
       onmove(event) {
         img.style.width = `${event.rect.width}px`;
         img.style.height = `${event.rect.height}px`;
       },
-      // Disable dragging while resizing
       onstart() {
-        img.style.pointerEvents = 'none';  // Disable pointer events during resize to prevent dragging
+        img.style.pointerEvents = 'none';
       },
       onend() {
-        img.style.pointerEvents = 'auto';  // Re-enable pointer events after resize
+        img.style.pointerEvents = 'auto';
       },
-      // Prevent dragging behavior by disabling the move cursor during resizing
       ondragstart(event) {
-        event.preventDefault();  // Prevent the default drag behavior
+        event.preventDefault();
       }
     });
 };
 
+// Function to remove an attachment
+const removeAttachment = (index) => {
+  attachedFiles.value.splice(index, 1);
+};
+
+// Format file size for display
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) {
+    return bytes + ' B';
+  } else if (bytes < 1048576) {
+    return (bytes / 1024).toFixed(2) + ' KB';
+  } else {
+    return (bytes / 1048576).toFixed(2) + ' MB';
+  }
+};
+
 // Set selected image for alignment
 const selectImage = (imgElement) => {
-  // Deselect any previously selected image
   if (selectedImage.value) {
     selectedImage.value.style.border = 'none';
   }
   
-  // Select the new image and add a border
   imgElement.style.border = '1px solid blue';
   selectedImage.value = imgElement;
 };
@@ -228,36 +340,6 @@ const selectImage = (imgElement) => {
 const handleImageClick = (event) => {
   if (event.target.tagName === 'IMG') {
     selectImage(event.target);
-  }
-};
-
-// Add image click event listener after mounting
-onMounted(() => {
-  const editor = document.getElementById('editor');
-  editor.addEventListener('click', handleImageClick);
-
-  // Listen for clicks outside to unfocus the image
-  document.addEventListener('click', handleOutsideClick);
-});
-
-onBeforeUnmount(() => {
-  // Cleanup the event listener when the component is destroyed
-  document.removeEventListener('click', handleOutsideClick);
-});
-
-// Function to handle clicks outside the editor or alignment buttons
-const handleOutsideClick = (event) => {
-  const editor = document.getElementById('editor');
-  const alignmentButtons = document.querySelectorAll('.text-xl'); // Adjust selector to match your alignment buttons
-  const isClickInsideEditor = editor.contains(event.target);
-  const isClickOnAlignmentButton = Array.from(alignmentButtons).some(button => button.contains(event.target));
-
-  // If the click is outside the editor and alignment buttons, unfocus the image
-  if (!isClickInsideEditor && !isClickOnAlignmentButton) {
-    if (selectedImage.value) {
-      selectedImage.value.style.border = 'none'; // Deselect the image
-      selectedImage.value = null;
-    }
   }
 };
 
@@ -286,6 +368,126 @@ const alignImageRight = () => {
   }
 };
 
+// Add this to your sendEmail function in the Vue component to send to the updated backend
+
+const sendEmail = async () => {
+  try {
+    const emailContent = document.getElementById('editor').innerHTML;
+    const emailSubject = document.getElementById('inputField').value;
+    const recipientEmail = 'recipient@example.com'; // Replace with your recipient logic
+    
+    // Prepare attachments for API
+    const attachments = [];
+    
+    // Add file attachments
+    for (const file of attachedFiles.value) {
+      const base64Content = await fileToBase64(file);
+      attachments.push({
+        content: base64Content.split(',')[1], // Remove data URL prefix
+        filename: file.name,
+        type: file.type,
+        disposition: 'attachment'
+      });
+    }
+    
+    // Process inline images from the editor
+    const editorImages = document.querySelectorAll('#editor img');
+    
+    // First, replace all data URLs with content IDs for inline images
+    for (const img of editorImages) {
+      // Check if it's an uploaded image (not a URL image)
+      if (img.src.startsWith('data:')) {
+        // Generate a Content-ID for the image
+        const contentId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Add to attachments with inline disposition
+        attachments.push({
+          content: img.src.split(',')[1], // Remove data URL prefix
+          filename: `image_${contentId}.jpg`, // Generate a filename
+          type: img.src.split(';')[0].split(':')[1], // Extract MIME type
+          disposition: 'inline',
+          content_id: contentId
+        });
+        
+        // Update the image src in the HTML to use cid:
+        img.src = `cid:${contentId}`;
+      }
+    }
+    
+    // Get the updated HTML after CID replacements
+    const updatedEmailContent = document.getElementById('editor').innerHTML;
+    
+    // Prepare the email data
+    const emailData = {
+      recipient: recipientEmail,
+      subject: emailSubject,
+      message: updatedEmailContent,
+      attachments: attachments
+    };
+    
+    // Make API call to your backend
+    const response = await fetch('http://localhost:3001/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(emailData)
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      alert('Email sent successfully!');
+      // Clear form or redirect as needed
+    } else {
+      alert(`Error: ${result.error || 'Failed to send email'}`);
+    }
+    
+  } catch (error) {
+    console.error('Error sending email:', error);
+    alert('Error sending email: ' + error.message);
+  }
+};
+
+// Helper function to convert File to base64
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+};
+
+// Add image click event listener after mounting
+onMounted(() => {
+  const editor = document.getElementById('editor');
+  editor.addEventListener('click', handleImageClick);
+  
+  // Listen for clicks outside to unfocus the image
+  document.addEventListener('click', handleOutsideClick);
+});
+
+onBeforeUnmount(() => {
+  // Cleanup the event listener when the component is destroyed
+  document.removeEventListener('click', handleOutsideClick);
+});
+
+// Function to handle clicks outside the editor or alignment buttons
+const handleOutsideClick = (event) => {
+  const editor = document.getElementById('editor');
+  const alignmentButtons = document.querySelectorAll('.text-xl');
+  const isClickInsideEditor = editor.contains(event.target);
+  const isClickOnAlignmentButton = Array.from(alignmentButtons).some(button => button.contains(event.target));
+
+  if (!isClickInsideEditor && !isClickOnAlignmentButton) {
+    if (selectedImage.value) {
+      selectedImage.value.style.border = 'none';
+      selectedImage.value = null;
+    }
+  }
+};
+
 // Define props
 const props = defineProps({
   subject: {
@@ -307,18 +509,14 @@ const updateSubject = (event) => {
 };
 
 const updateMessage = (content) => {
-  emit('updateMessage', content); // Send the updated content to the parent component
+  emit('updateMessage', content);
 };
 
 const onEditorInput = (event) => {
-  const content = event.target.innerHTML; // Get the updated content from the editor
-  updateMessage(content); // Emit the updated message
+  const content = event.target.innerHTML;
+  updateMessage(content);
 };
-
-
-
 </script>
-
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&display=swap');
