@@ -1,8 +1,3 @@
-Looking at your Vue.js component, I can see you already have image insertion functionality for the rich text editor, but you need to add the ability to actually attach files and images when sending the email via SendGrid. Let me help implement that functionality.
-
-Here's how you can add file attachment handling to your existing code:
-
-```javascript
 <template>
   <div class="flex flex-col items-center justify-center w-full p-4">
     <div class="w-full border p-4 rounded-lg shadow-lg bg-white text-gray-700 font-arial text-base leading-6">
@@ -368,13 +363,29 @@ const alignImageRight = () => {
   }
 };
 
-// Add this to your sendEmail function in the Vue component to send to the updated backend
+// Your existing imports and component setup...
 
+// Replace or add this sendEmail function to your component
 const sendEmail = async () => {
   try {
     const emailContent = document.getElementById('editor').innerHTML;
     const emailSubject = document.getElementById('inputField').value;
-    const recipientEmail = 'recipient@example.com'; // Replace with your recipient logic
+    
+    // Make sure we have a subject
+    if (!emailSubject.trim()) {
+      alert('Prašome įvesti laiško temą');
+      return;
+    }
+    
+    // Make sure we have either content or attachments
+    if (!emailContent.trim() && attachedFiles.value.length === 0) {
+      alert('Prašome įvesti laišką arba pridėti priedų');
+      return;
+    }
+    
+    // Get recipient email from your existing logic
+    // For example, if you have a recipient input field:
+    // const recipientEmail = document.getElementById('recipientField').value;
     
     // Prepare attachments for API
     const attachments = [];
@@ -390,10 +401,14 @@ const sendEmail = async () => {
       });
     }
     
-    // Process inline images from the editor
-    const editorImages = document.querySelectorAll('#editor img');
+    // Get a clone of the current editor content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = emailContent;
     
-    // First, replace all data URLs with content IDs for inline images
+    // Process inline images from the editor
+    const editorImages = tempDiv.querySelectorAll('img');
+    
+    // Replace data URLs with content IDs for inline images
     for (const img of editorImages) {
       // Check if it's an uploaded image (not a URL image)
       if (img.src.startsWith('data:')) {
@@ -409,24 +424,27 @@ const sendEmail = async () => {
           content_id: contentId
         });
         
-        // Update the image src in the HTML to use cid:
+        // Update the image src in the cloned HTML to use cid:
         img.src = `cid:${contentId}`;
       }
     }
     
-    // Get the updated HTML after CID replacements
-    const updatedEmailContent = document.getElementById('editor').innerHTML;
+    // Show loading state
+    const sendButton = document.querySelector('button.bg-blue-500');
+    const originalText = sendButton.textContent;
+    sendButton.textContent = 'Siunčiama...';
+    sendButton.disabled = true;
     
     // Prepare the email data
     const emailData = {
-      recipient: recipientEmail,
+      recipient: props.recipient || 'recipient@example.com', // Use prop or default 
       subject: emailSubject,
-      message: updatedEmailContent,
+      message: tempDiv.innerHTML, // Use the modified HTML with CIDs
       attachments: attachments
     };
     
     // Make API call to your backend
-    const response = await fetch('http://localhost:3001/send-email', {
+    const response = await fetch('https://praktika2025.onrender.com/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -434,22 +452,34 @@ const sendEmail = async () => {
       body: JSON.stringify(emailData)
     });
     
+    // Reset button
+    sendButton.textContent = originalText;
+    sendButton.disabled = false;
+    
     const result = await response.json();
     
     if (response.ok) {
-      alert('Email sent successfully!');
-      // Clear form or redirect as needed
+      alert('Laiškas išsiųstas sėkmingai!');
+      // Clear the form
+      document.getElementById('inputField').value = '';
+      document.getElementById('editor').innerHTML = '';
+      attachedFiles.value = [];
+      inlineImages.value = [];
     } else {
-      alert(`Error: ${result.error || 'Failed to send email'}`);
+      alert(`Klaida: ${result.error || 'Nepavyko išsiųsti laiško'}`);
     }
-    
   } catch (error) {
-    console.error('Error sending email:', error);
-    alert('Error sending email: ' + error.message);
+    console.error('Klaida siunčiant laišką:', error);
+    alert('Klaida siunčiant laišką: ' + error.message);
+    
+    // Reset button in case of error
+    const sendButton = document.querySelector('button.bg-blue-500');
+    sendButton.textContent = 'Siųsti laišką';
+    sendButton.disabled = false;
   }
 };
 
-// Helper function to convert File to base64
+// Make sure you have this helper function
 const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -458,7 +488,6 @@ const fileToBase64 = (file) => {
     reader.onerror = error => reject(error);
   });
 };
-
 // Add image click event listener after mounting
 onMounted(() => {
   const editor = document.getElementById('editor');
