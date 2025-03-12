@@ -55,9 +55,9 @@
           🔗
         </button>
 
-        <button @click="addImageFromURL" class="text-xl text-gray-700 hover:text-blue-500">
-          🖼️
-        </button>
+        <button @click="addImageBelowText" class="text-xl text-gray-700 hover:text-blue-500">
+  🖼️
+</button>
         <!-- Attachments Section -->
         <div class="relative">
           <button @click="triggerFileUpload" class="text-xl text-gray-700 hover:text-blue-500">
@@ -523,6 +523,18 @@ const handleOutsideClick = (event) => {
       selectedImage.value = null;
     }
   }
+};
+
+const addImageBelowText = () => {
+  // Get the current editor
+  const editor = document.getElementById('editor');
+  
+  // Create a line break to ensure the image appears on a new line
+  const br = document.createElement('br');
+  editor.appendChild(br);
+  
+  // Now trigger the normal image upload/insertion process
+  triggerFileUpload();
 };
 
 const props = defineProps({
