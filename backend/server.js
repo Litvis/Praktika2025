@@ -46,22 +46,52 @@ const processImagesForEmail = (htmlContent) => {
 // Updated /send-email endpoint to handle attachments
 // Add this logging to your backend
 app.post('/send-email', async (req, res) => {
-  const { recipient, subject, message } = req.body;
+  const { recipient, subject, message, attachments } = req.body;
   
   try {
+    // Validate recipient email
+    if (!recipient || !recipient.includes('@')) {
+      return res.status(400).json({ error: 'Invalid recipient email' });
+    }
+
+    // Prepare email message
     const msg = {
       to: recipient,
-      from: 'deividaslitvinenko4@gmail.com', // Your verified SendGrid sender email
+      from: 'deividaslitvinenko4@gmail.com', // Your verified sender email
       subject,
-      html: message  // Directly use the HTML with base64 image
+      html: message
     };
     
+    // Add attachments if they exist
+    if (attachments && attachments.length > 0) {
+      msg.attachments = attachments.map(attachment => ({
+        content: attachment.content,
+        filename: attachment.filename,
+        type: attachment.type || 'application/octet-stream',
+        disposition: attachment.disposition || 'attachment'
+      }));
+    }
+    
+    // Send email via SendGrid
     await sgMail.send(msg);
     
+    // Optional: Save to database
+    const attachmentNames = attachments 
+      ? attachments.map(a => a.filename).join(', ') 
+      : null;
+    
+    await client.query(
+      'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4)',
+      [subject, message, recipient, attachmentNames]
+    );
+
     res.status(200).json({ success: true, message: 'Email sent successfully' });
   } catch (error) {
     console.error('Email sending error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: 'Failed to send email', 
+      details: error.message 
+    });
   }
 });
 

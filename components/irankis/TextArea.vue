@@ -381,120 +381,36 @@ const processImagesForEmail = (htmlContent) => {
 
 const sendEmail = async () => {
   try {
-    console.log("📩 sendEmail function called in TextArea");
-  console.log("Current recipient:", props.recipient);
-  console.log("Current subject:", document.getElementById('inputField').value);
     const emailContent = document.getElementById('editor').innerHTML;
     const emailSubject = document.getElementById('inputField').value;
     
-    // Make sure we have a subject
-    if (!emailSubject.trim()) {
-      alert('Prašome įvesti laiško temą');
-      return;
-    }
+    // Prepare attachments
+    const fileAttachments = [];
     
-    // Make sure we have either content or attachments
-    if (!emailContent.trim() && attachedFiles.value.length === 0) {
-      alert('Prašome įvesti laišką arba pridėti priedų');
-      return;
-    }
-    
-    // Log the recipient from props for debugging
-    console.log("📧 Using recipient from props:", props.recipient);
-    
-    // If no recipient is provided, show an error
-    if (!props.recipient || props.recipient.trim() === '') {
-      alert('Prašome įvesti gavėjo el. paštą');
-      return;
-    }
-    
-    // Create a new div for processing the content
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = emailContent;
-    
-    // Get all image elements
-    const images = tempDiv.querySelectorAll('img');
-    const attachments = [];
-    
-    // Show loading state
-    const sendButton = document.querySelector('button.bg-blue-500');
-    let buttonOriginalText = 'Siųsti laišką'; // Default value
-    
-    if (sendButton) {
-      buttonOriginalText = sendButton.textContent;
-      sendButton.textContent = 'Siunčiama...';
-      sendButton.disabled = true;
-    }
-    
-    // First add regular file attachments
+    // Convert attached files to base64
     for (const file of attachedFiles.value) {
       const base64Content = await fileToBase64(file);
-      attachments.push({
-        content: base64Content.split(',')[1],
+      fileAttachments.push({
+        content: base64Content.split(',')[1], // Remove data URL prefix
         filename: file.name,
         type: file.type,
         disposition: 'attachment'
       });
     }
-    
-    // Process each image
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i];
-      
-      // Only process data URLs (embedded images)
-      if (img.src && img.src.startsWith('data:')) {
-        // Simple, sequential content IDs
-        const contentId = `image_${i}`;
-        
-        // Extract the base64 data and MIME type
-        const matches = img.src.match(/^data:(.+?);base64,(.+)$/);
-        
-        if (matches && matches.length === 3) {
-          const mimeType = matches[1] || 'image/jpeg';
-          const base64Data = matches[2];
-          
-          // Add as an attachment with inline disposition
-          attachments.push({
-            content: base64Data,
-            filename: `image_${i}.jpg`,
-            type: mimeType,
-            disposition: 'inline',
-            content_id: contentId
-          });
-          
-          // Replace with CID reference
-          img.src = `cid:${contentId}`;
-          
-          // Ensure proper attributes
-          if (!img.hasAttribute('width')) img.setAttribute('width', '600');
-          if (!img.hasAttribute('alt')) img.setAttribute('alt', 'Email Image');
-          img.setAttribute('border', '0');
-        }
-      }
-    }
-    
+
     // Prepare email data
     const emailData = {
       recipient: props.recipient.trim(),
       subject: emailSubject,
-      message: tempDiv.innerHTML,
-      attachments: attachments
+      message: emailContent,
+      attachments: fileAttachments
     };
     
-    console.log("📤 Sending email to:", emailData.recipient);
-    
-    // Make API call to your backend
     const response = await fetch('https://praktika2025.onrender.com/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(emailData)
     });
-    
-    // Reset button
-    if (sendButton) {
-      sendButton.textContent = buttonOriginalText;
-      sendButton.disabled = false;
-    }
     
     const result = await response.json();
     
@@ -504,91 +420,81 @@ const sendEmail = async () => {
       document.getElementById('inputField').value = '';
       document.getElementById('editor').innerHTML = '';
       attachedFiles.value = [];
-      inlineImages.value = [];
-      
-      // Emit an event to notify the parent component of successful sending
-      emit('emailSent', true);
     } else {
       alert(`Klaida: ${result.error || 'Nepavyko išsiųsti laiško'}`);
     }
   } catch (error) {
     console.error('Klaida siunčiant laišką:', error);
     alert('Klaida siunčiant laišką: ' + error.message);
-    
-    // Reset button in case of error
-    const sendButton = document.querySelector('button.bg-blue-500');
-    if (sendButton) {
-      sendButton.textContent = 'Siųsti laišką';
-      sendButton.disabled = false;
-    }
   }
+};
+
+// Helper function to convert file to base64
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
 };
 
 // Add test function
 const sendTestEmail = async () => {
   try {
-    // Create a unique content ID that works reliably
-    const uniqueId = `img_${Date.now()}`;
-    
-    // Create HTML with proper image reference
+    // Red rectangle image (base64 encoded)
+    const testImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAP0SURBVHhe7dUxAQAwDMCwUfqXNZHOHgjg5ws4IQgkCIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIg";
+
     const simpleHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
         <h2 style="color: #333;">Test Email with Image</h2>
         <p style="color: #666; line-height: 1.5;">This is a test email to verify image handling. You should see a colored rectangle below:</p>
         
         <div style="text-align: center; margin: 30px 0;">
-          <img src="cid:${uniqueId}" width="300" height="200" alt="Test Image" 
+          <img src="data:image/png;base64,${testImageBase64}" width="300" height="200" alt="Test Image" 
                style="border: 1px solid #ddd; max-width: 100%;">
         </div>
         
-        <p style="color: #666; line-height: 1.5;">If you don't see the image above, there might be an issue with how inline images are being processed.</p>
+        <p style="color: #666; line-height: 1.5;">If you see the image above, the inline base64 image is working!</p>
       </div>
     `;
 
-    // Red rectangle image
-    const testImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAP0SURBVHhe7dUxAQAwDMCwUfqXNZHOHgjg5ws4IQgkCIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSLTdWNdGXJnblAAAAABJRU5ErkJggg==";
-
-    // Prepare email data
     const testEmailData = {
       recipient: props.recipient.trim(),
-      subject: "Test Email with Image - " + new Date().toISOString(),
-      message: simpleHtml,
-      attachments: [{
-        content: testImageBase64,
-        filename: "test-red-rectangle.png",
-        type: "image/png",
-        disposition: "inline",
-        content_id: uniqueId // Important: match this to the img src
-      }]
+      subject: "Test Base64 Inline Image - " + new Date().toISOString(),
+      message: simpleHtml
     };
 
-    console.log("📧 Sending test email with following data:", {
-      recipient: testEmailData.recipient,
-      subject: testEmailData.subject,
-      attachments: testEmailData.attachments.length
-    });
+    console.log("🔍 Test Email Data:", JSON.stringify(testEmailData, null, 2));
     
-    // Send email
     const response = await fetch('https://praktika2025.onrender.com/send-email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify(testEmailData)
     });
 
     const result = await response.json();
     
+    console.log("🌐 Response Status:", response.status);
+    console.log("📨 Response Body:", JSON.stringify(result, null, 2));
+    
     if (response.ok) {
       window.alert('Test email sent successfully!'); 
-      console.log("✅ Test email sent result:", result);
     } else {
       window.alert(`Error: ${result.error || 'Failed to send test email'}`);
-      console.error("❌ Error sending test email:", result);
     }
   } catch (error) {
-    console.error('Error sending test email:', error);
+    console.error('❌ Comprehensive Error:', {
+      message: error.message,
+      stack: error.stack
+    });
     window.alert('Error sending test email: ' + error.message);
   }
 };
+
 // Add image click event listener after mounting
 onMounted(() => {
   const editor = document.getElementById('editor');
