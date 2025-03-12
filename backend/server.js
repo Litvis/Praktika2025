@@ -232,19 +232,6 @@ app.get('/setup-db', async (req, res) => {
 });
 
 
-let authRoutes;
-try {
-  authRoutes = await import('./routes/OAuth.js');
-  app.use(authRoutes.default);
-  console.log("OAuth routes loaded successfully");
-} catch (error) {
-  console.warn("Warning: OAuth routes not loaded:", error.message);
-  // Create empty routes to avoid errors
-  app.use('/auth/google', (req, res) => res.status(503).send('OAuth not configured'));
-  app.use('/auth/google/callback', (req, res) => res.status(503).send('OAuth not configured'));
-  app.use('/auth/user', (req, res) => res.status(401).json({ message: 'Not authenticated' }));
-}
-
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
