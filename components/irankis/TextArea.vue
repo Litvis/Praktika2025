@@ -525,7 +525,7 @@ const handleOutsideClick = (event) => {
   }
 };
 
-// Define props
+// In TextArea.vue, update the component props
 const props = defineProps({
   subject: {
     type: String,
@@ -538,6 +538,10 @@ const props = defineProps({
   recipient: {
     type: String,
     required: true,
+  },
+  attachedFiles: {  // Add this new prop
+    type: Array,
+    default: () => []
   }
 });
 
