@@ -212,11 +212,24 @@ const insertImageIntoEditor = (file) => {
   reader.onload = (e) => {
     const img = document.createElement('img');
     img.src = e.target.result;
+    
+    // Set important attributes
     img.style.maxWidth = '100%';
     img.style.height = 'auto';
     img.style.cursor = 'move';
     img.contentEditable = "false";
     img.dataset.filename = file.name;
+    img.alt = file.name || 'Embedded Image';
+    
+    // Ensure image has dimensions - these help email clients display correctly
+    img.width = 600; // Default width - will be constrained by maxWidth
+    img.height = 'auto';
+    
+    // Add more styling for better email client compatibility
+    img.style.display = 'block'; // Prevents inline glitches
+    img.style.marginLeft = 'auto';
+    img.style.marginRight = 'auto';
+    img.style.border = 'none';
     
     // Store the image data for potential email sending
     inlineImages.value.push({
@@ -231,14 +244,35 @@ const insertImageIntoEditor = (file) => {
       const range = selection.rangeCount ? selection.getRangeAt(0) : null;
       
       if (range) {
+        // Insert a line break before the image for better spacing
+        const br = document.createElement('br');
+        range.insertNode(br);
+        
+        // Move the range after the line break
+        range.setStartAfter(br);
+        range.setEndAfter(br);
+        
+        // Insert the image
         range.insertNode(img);
-        // Move the selection after the inserted image
+        
+        // Insert another line break after the image
+        const brAfter = document.createElement('br');
         range.setStartAfter(img);
         range.setEndAfter(img);
+        range.insertNode(brAfter);
+        
+        // Move the selection after the inserted content
+        range.setStartAfter(brAfter);
+        range.setEndAfter(brAfter);
         selection.removeAllRanges();
         selection.addRange(range);
       } else {
+        // If no range, append to the editor with proper spacing
+        if (editor.innerHTML.trim() !== '') {
+          editor.appendChild(document.createElement('br'));
+        }
         editor.appendChild(img);
+        editor.appendChild(document.createElement('br'));
       }
       
       // Make the image resizable
@@ -247,35 +281,6 @@ const insertImageIntoEditor = (file) => {
   };
   
   reader.readAsDataURL(file);
-};
-
-// Function to add an image via URL
-const addImageFromURL = () => {
-  focusEditor(); // Ensure the editor is focused
-  let url = prompt('Įveskite nuotraukos URL:'); // Prompt user for an image URL
-  if (url) {
-    const img = document.createElement('img');
-    img.src = url;
-    img.style.maxWidth = '100%';
-    img.style.height = 'auto';
-    img.style.cursor = 'move';
-    img.contentEditable = "false";
-    
-    const editor = document.getElementById('editor');
-    if (editor) {
-      const selection = window.getSelection();
-      const range = selection.rangeCount ? selection.getRangeAt(0) : null;
-
-      if (range) {
-        range.deleteContents();
-        range.insertNode(img);
-      } else {
-        editor.appendChild(img);
-      }
-
-      makeImageResizable(img);
-    }
-  }
 };
 
 // Resizing logic with interact.js
@@ -363,10 +368,61 @@ const alignImageRight = () => {
   }
 };
 
-// Your existing imports and component setup...
-
-// Replace or add this sendEmail function to your component
-// Update the sendEmail function in your TextArea component
+const processImagesForEmail = (htmlContent) => {
+  // Create a temporary div to work with the HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlContent;
+  
+  // Process all images in the HTML
+  const images = tempDiv.querySelectorAll('img');
+  const imageAttachments = [];
+  
+  // Check each image
+  images.forEach((img, index) => {
+    // Skip images that don't have a src or have an external URL
+    if (!img.src || !img.src.trim() || img.src.startsWith('http')) {
+      // Remove images with no src to prevent empty <img> tags
+      if (!img.src || !img.src.trim()) {
+        img.remove();
+      }
+      return;
+    }
+    
+    // Now we know it's either a data URL or a CID reference
+    if (img.src.startsWith('data:')) {
+      // Generate a unique content ID
+      const contentId = `img_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Add to image attachments array
+      imageAttachments.push({
+        content: img.src.split(',')[1], // Remove data URL prefix
+        filename: `inline_image_${index}.jpg`, // Generate a filename
+        type: img.src.split(';')[0].split(':')[1] || 'image/jpeg', // Extract MIME type or default to JPEG
+        disposition: 'inline',
+        content_id: contentId
+      });
+      
+      // Replace the data URL with the content ID reference
+      img.src = `cid:${contentId}`;
+      
+      // Add important attributes for proper display in email clients
+      img.setAttribute('width', img.width || '600');
+      img.setAttribute('height', img.height || 'auto');
+      img.setAttribute('alt', img.alt || 'Embedded Image');
+      
+      // Add more styling for better email client compatibility
+      img.style.display = 'block';
+      img.style.marginLeft = 'auto';
+      img.style.marginRight = 'auto';
+      img.style.border = 'none';
+    }
+  });
+  
+  return {
+    processedHtml: tempDiv.innerHTML,
+    imageAttachments: imageAttachments
+  };
+};
 
 const sendEmail = async () => {
   try {
@@ -401,45 +457,25 @@ const sendEmail = async () => {
     for (const file of attachedFiles.value) {
       const base64Content = await fileToBase64(file);
       attachments.push({
-        content: base64Content.split(',')[1], // Remove data URL prefix
+        content: base64Content.split(',')[1],
         filename: file.name,
         type: file.type,
         disposition: 'attachment'
       });
     }
     
-    // Get a clone of the current editor content
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = emailContent;
+    // Process images using our new function
+    const { processedHtml, imageAttachments } = processImagesForEmail(emailContent);
     
-    // Process inline images from the editor
-    const editorImages = tempDiv.querySelectorAll('img');
-    
-    // Replace data URLs with content IDs for inline images
-    for (const img of editorImages) {
-      // Check if it's an uploaded image (not a URL image)
-      if (img.src.startsWith('data:')) {
-        // Generate a Content-ID for the image
-        const contentId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Add to attachments with inline disposition
-        attachments.push({
-          content: img.src.split(',')[1], // Remove data URL prefix
-          filename: `image_${contentId}.jpg`, // Generate a filename
-          type: img.src.split(';')[0].split(':')[1], // Extract MIME type
-          disposition: 'inline',
-          content_id: contentId
-        });
-        
-        // Update the image src in the cloned HTML to use cid:
-        img.src = `cid:${contentId}`;
-      }
-    }
+    // Add image attachments to the attachments array
+    attachments.push(...imageAttachments);
     
     // Show loading state
     const sendButton = document.querySelector('button.bg-blue-500');
+    let buttonOriginalText = 'Siųsti laišką'; // Default value
+    
     if (sendButton) {
-      const originalText = sendButton.textContent;
+      buttonOriginalText = sendButton.textContent;
       sendButton.textContent = 'Siunčiama...';
       sendButton.disabled = true;
     }
@@ -448,7 +484,7 @@ const sendEmail = async () => {
     const emailData = {
       recipient: props.recipient.trim(), // Use the recipient from props
       subject: emailSubject,
-      message: tempDiv.innerHTML, // Use the modified HTML with CIDs
+      message: processedHtml, // Use the processed HTML
       attachments: attachments
     };
     
@@ -465,7 +501,7 @@ const sendEmail = async () => {
     
     // Reset button
     if (sendButton) {
-      sendButton.textContent = originalText;
+      sendButton.textContent = buttonOriginalText;
       sendButton.disabled = false;
     }
     
@@ -568,6 +604,8 @@ const onEditorInput = (event) => {
   const content = event.target.innerHTML;
   updateMessage(content);
 };
+
+
 </script>
 
 <style scoped>
