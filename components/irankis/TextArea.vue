@@ -55,9 +55,9 @@
           🔗
         </button>
 
-        <button @click="addImageBelowText" class="text-xl text-gray-700 hover:text-blue-500">
-  🖼️
-</button>
+        <button @click="addImageFromURL" class="text-xl text-gray-700 hover:text-blue-500">
+          🖼️
+        </button>
         <!-- Attachments Section -->
         <div class="relative">
           <button @click="triggerFileUpload" class="text-xl text-gray-700 hover:text-blue-500">
@@ -109,18 +109,11 @@
       </div>
 
       <!-- Send Button -->
-<!-- Add the test button inside your TextArea component's template -->
-<div class="mt-4 flex justify-end">
-  <button @click="sendEmail" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-    Siųsti laišką
-  </button>
-  <button @click="sendTestEmail" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 ml-2 rounded">
-    Test Email
-  </button>
-  <button @click="() => alert('Regular button clicked')" class="bg-red-500 text-white px-4 py-2 rounded">
-  Debug Button
-</button>
-</div>
+      <div class="mt-4 flex justify-end">
+        <button @click="sendEmail" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          Siųsti laišką
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -212,32 +205,79 @@ const handleFileUpload = (event) => {
   event.target.value = '';
 };
 
+// Function to insert an image into the editor
 const insertImageIntoEditor = (file) => {
   const reader = new FileReader();
   
   reader.onload = (e) => {
     const img = document.createElement('img');
-    
-    // Use base64 directly in the src attribute
-    img.src = e.target.result; // This is already base64
-    
-    // Add important email-friendly attributes
-    img.setAttribute('alt', file.name || 'Embedded Image');
-    
-    // Inline styles for email compatibility
+    img.src = e.target.result;
     img.style.maxWidth = '100%';
     img.style.height = 'auto';
-    img.style.display = 'block';
-    img.style.marginLeft = 'auto';
-    img.style.marginRight = 'auto';
+    img.style.cursor = 'move';
+    img.contentEditable = "false";
+    img.dataset.filename = file.name;
     
-    // Insert into editor
+    // Store the image data for potential email sending
+    inlineImages.value.push({
+      file: file,
+      id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      dataUrl: e.target.result
+    });
+    
     const editor = document.getElementById('editor');
-    editor.appendChild(img);
+    if (editor) {
+      const selection = window.getSelection();
+      const range = selection.rangeCount ? selection.getRangeAt(0) : null;
+      
+      if (range) {
+        range.insertNode(img);
+        // Move the selection after the inserted image
+        range.setStartAfter(img);
+        range.setEndAfter(img);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        editor.appendChild(img);
+      }
+      
+      // Make the image resizable
+      makeImageResizable(img);
+    }
   };
   
   reader.readAsDataURL(file);
 };
+
+// Function to add an image via URL
+const addImageFromURL = () => {
+  focusEditor(); // Ensure the editor is focused
+  let url = prompt('Įveskite nuotraukos URL:'); // Prompt user for an image URL
+  if (url) {
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.cursor = 'move';
+    img.contentEditable = "false";
+    
+    const editor = document.getElementById('editor');
+    if (editor) {
+      const selection = window.getSelection();
+      const range = selection.rangeCount ? selection.getRangeAt(0) : null;
+
+      if (range) {
+        range.deleteContents();
+        range.insertNode(img);
+      } else {
+        editor.appendChild(img);
+      }
+
+      makeImageResizable(img);
+    }
+  }
+};
+
 // Resizing logic with interact.js
 const makeImageResizable = (img) => {
   interact(img)
@@ -323,94 +363,111 @@ const alignImageRight = () => {
   }
 };
 
-const processImagesForEmail = (htmlContent) => {
-  // Create a temporary div to work with the HTML
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlContent;
-  
-  // Process all images in the HTML
-  const images = tempDiv.querySelectorAll('img');
-  const imageAttachments = [];
-  
-  // Check each image
-  images.forEach((img, index) => {
-    // Skip images that don't have a src or have an external URL
-    if (!img.src || !img.src.trim() || img.src.startsWith('http')) {
-      // Remove images with no src to prevent empty <img> tags
-      if (!img.src || !img.src.trim()) {
-        img.remove();
-      }
-      return;
-    }
-    
-    // Now we know it's either a data URL or a CID reference
-    if (img.src.startsWith('data:')) {
-      // Generate a unique content ID
-      const contentId = `img_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Add to image attachments array
-      imageAttachments.push({
-        content: img.src.split(',')[1], // Remove data URL prefix
-        filename: `inline_image_${index}.jpg`, // Generate a filename
-        type: img.src.split(';')[0].split(':')[1] || 'image/jpeg', // Extract MIME type or default to JPEG
-        disposition: 'inline',
-        content_id: contentId
-      });
-      
-      // Replace the data URL with the content ID reference
-      img.src = `cid:${contentId}`;
-      
-      // Add important attributes for proper display in email clients
-      img.setAttribute('width', img.width || '600');
-      img.setAttribute('height', img.height || 'auto');
-      img.setAttribute('alt', img.alt || 'Embedded Image');
-      
-      // Add more styling for better email client compatibility
-      img.style.display = 'block';
-      img.style.marginLeft = 'auto';
-      img.style.marginRight = 'auto';
-      img.style.border = 'none';
-    }
-  });
-  
-  return {
-    processedHtml: tempDiv.innerHTML,
-    imageAttachments: imageAttachments
-  };
-};
+// Your existing imports and component setup...
+
+// Replace or add this sendEmail function to your component
+// Update the sendEmail function in your TextArea component
 
 const sendEmail = async () => {
   try {
     const emailContent = document.getElementById('editor').innerHTML;
     const emailSubject = document.getElementById('inputField').value;
     
-    // Prepare attachments
-    const fileAttachments = [];
+    // Make sure we have a subject
+    if (!emailSubject.trim()) {
+      alert('Prašome įvesti laiško temą');
+      return;
+    }
     
-    // Convert attached files to base64
+    // Make sure we have either content or attachments
+    if (!emailContent.trim() && attachedFiles.value.length === 0) {
+      alert('Prašome įvesti laišką arba pridėti priedų');
+      return;
+    }
+    
+    // Log the recipient from props for debugging
+    console.log("📧 Using recipient from props:", props.recipient);
+    
+    // If no recipient is provided, show an error
+    if (!props.recipient || props.recipient.trim() === '') {
+      alert('Prašome įvesti gavėjo el. paštą');
+      return;
+    }
+    
+    // Prepare attachments for API
+    const attachments = [];
+    
+    // Add file attachments
     for (const file of attachedFiles.value) {
       const base64Content = await fileToBase64(file);
-      fileAttachments.push({
+      attachments.push({
         content: base64Content.split(',')[1], // Remove data URL prefix
         filename: file.name,
         type: file.type,
         disposition: 'attachment'
       });
     }
-
-    // Prepare email data
+    
+    // Get a clone of the current editor content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = emailContent;
+    
+    // Process inline images from the editor
+    const editorImages = tempDiv.querySelectorAll('img');
+    
+    // Replace data URLs with content IDs for inline images
+    for (const img of editorImages) {
+      // Check if it's an uploaded image (not a URL image)
+      if (img.src.startsWith('data:')) {
+        // Generate a Content-ID for the image
+        const contentId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Add to attachments with inline disposition
+        attachments.push({
+          content: img.src.split(',')[1], // Remove data URL prefix
+          filename: `image_${contentId}.jpg`, // Generate a filename
+          type: img.src.split(';')[0].split(':')[1], // Extract MIME type
+          disposition: 'inline',
+          content_id: contentId
+        });
+        
+        // Update the image src in the cloned HTML to use cid:
+        img.src = `cid:${contentId}`;
+      }
+    }
+    
+    // Show loading state
+    const sendButton = document.querySelector('button.bg-blue-500');
+    if (sendButton) {
+      const originalText = sendButton.textContent;
+      sendButton.textContent = 'Siunčiama...';
+      sendButton.disabled = true;
+    }
+    
+    // Prepare the email data
     const emailData = {
-      recipient: props.recipient.trim(),
+      recipient: props.recipient.trim(), // Use the recipient from props
       subject: emailSubject,
-      message: emailContent,
-      attachments: fileAttachments
+      message: tempDiv.innerHTML, // Use the modified HTML with CIDs
+      attachments: attachments
     };
     
+    console.log("📤 Sending email to:", emailData.recipient);
+    
+    // Make API call to your backend
     const response = await fetch('https://praktika2025.onrender.com/send-email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(emailData)
     });
+    
+    // Reset button
+    if (sendButton) {
+      sendButton.textContent = originalText;
+      sendButton.disabled = false;
+    }
     
     const result = await response.json();
     
@@ -420,81 +477,25 @@ const sendEmail = async () => {
       document.getElementById('inputField').value = '';
       document.getElementById('editor').innerHTML = '';
       attachedFiles.value = [];
+      inlineImages.value = [];
+      
+      // Emit an event to notify the parent component of successful sending
+      emit('emailSent', true);
     } else {
       alert(`Klaida: ${result.error || 'Nepavyko išsiųsti laiško'}`);
     }
   } catch (error) {
     console.error('Klaida siunčiant laišką:', error);
     alert('Klaida siunčiant laišką: ' + error.message);
-  }
-};
-
-// Helper function to convert file to base64
-const fileToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-// Add test function
-const sendTestEmail = async () => {
-  try {
-    // Red rectangle image (base64 encoded)
-    const testImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAP0SURBVHhe7dUxAQAwDMCwUfqXNZHOHgjg5ws4IQgkCIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIgUSCQIAQSCQIBAiBRIJAgBBIJAgECIFEgkCAEEgkCAQIg";
-
-    const simpleHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
-        <h2 style="color: #333;">Test Email with Image</h2>
-        <p style="color: #666; line-height: 1.5;">This is a test email to verify image handling. You should see a colored rectangle below:</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <img src="data:image/png;base64,${testImageBase64}" width="300" height="200" alt="Test Image" 
-               style="border: 1px solid #ddd; max-width: 100%;">
-        </div>
-        
-        <p style="color: #666; line-height: 1.5;">If you see the image above, the inline base64 image is working!</p>
-      </div>
-    `;
-
-    const testEmailData = {
-      recipient: props.recipient.trim(),
-      subject: "Test Base64 Inline Image - " + new Date().toISOString(),
-      message: simpleHtml
-    };
-
-    console.log("🔍 Test Email Data:", JSON.stringify(testEmailData, null, 2));
     
-    const response = await fetch('https://praktika2025.onrender.com/send-email', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(testEmailData)
-    });
-
-    const result = await response.json();
-    
-    console.log("🌐 Response Status:", response.status);
-    console.log("📨 Response Body:", JSON.stringify(result, null, 2));
-    
-    if (response.ok) {
-      window.alert('Test email sent successfully!'); 
-    } else {
-      window.alert(`Error: ${result.error || 'Failed to send test email'}`);
+    // Reset button in case of error
+    const sendButton = document.querySelector('button.bg-blue-500');
+    if (sendButton) {
+      sendButton.textContent = 'Siųsti laišką';
+      sendButton.disabled = false;
     }
-  } catch (error) {
-    console.error('❌ Comprehensive Error:', {
-      message: error.message,
-      stack: error.stack
-    });
-    window.alert('Error sending test email: ' + error.message);
   }
 };
-
 // Add image click event listener after mounting
 onMounted(() => {
   const editor = document.getElementById('editor');
@@ -524,18 +525,7 @@ const handleOutsideClick = (event) => {
   }
 };
 
-const addImageBelowText = () => {
-  // Get the current editor
-  const editor = document.getElementById('editor');
-  
-  // Create a line break to ensure the image appears on a new line
-  const br = document.createElement('br');
-  editor.appendChild(br);
-  
-  // Now trigger the normal image upload/insertion process
-  triggerFileUpload();
-};
-
+// Define props
 const props = defineProps({
   subject: {
     type: String,
@@ -567,8 +557,6 @@ const onEditorInput = (event) => {
   const content = event.target.innerHTML;
   updateMessage(content);
 };
-
-
 </script>
 
 <style scoped>

@@ -22,6 +22,8 @@
                 @updateRecipient="recipient = $event"
               />
 
+
+
                 <FileUpload
                   v-if="currentOption === 'csv'"
                   @updateEmails="updateEmails"
@@ -34,14 +36,13 @@
       </div>
       <div class="w-full p-16">
         <TextArea 
-  :subject="subject" 
-  :message="message"
-  :recipient="recipient"
-  @updateSubject="updateSubject" 
-  @updateMessage="updateMessage"
-  @emailSent="handleEmailSent"
-/>
-<p>Current recipient: {{ recipient }}</p>
+          :subject="subject" 
+          :message="message"
+          :recipient="recipient"
+          @updateSubject="updateSubject" 
+          @updateMessage="updateMessage" 
+        />
+        <button @click="sendEmail" class="border-2 p-4 w-48 rounded-xl bg-green-700 text-white font-bold text-xl ml-2">Siusti</button>
       </div>
     </div>
   </div>
@@ -81,6 +82,7 @@ const updateEmails = (newEmails) => {
   }
 };
 
+
 const updateSubject = (newSubject) => {
   subject.value = newSubject;
 };
@@ -89,9 +91,43 @@ const updateMessage = (newMessage) => {
   message.value = newMessage;
 };
 
-// Handle successful email sending
-const handleEmailSent = () => {
-  console.log("✅ Email sent successfully!");
-  // You can add additional logic here if needed
+const sendEmail = async () => {
+  console.log("📩 Debugging recipient before sending:", recipient.value);
+
+  if (!recipient.value || recipient.value.trim() === '') {
+    alert("❌ Please enter a valid email!");
+    return;
+  }
+
+  const config = useRuntimeConfig();
+  const emailData = {
+    recipient: recipient.value.trim(),
+    subject: subject.value.trim(),
+    message: message.value.trim(),
+  };
+
+  console.log("📤 Sending email data:", JSON.stringify(emailData, null, 2));
+
+  try {
+    const config = useRuntimeConfig();
+
+    const response = await $fetch(`${config.public.apiBase}/send-email`, { 
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: emailData,
+    });
+
+
+    console.log("✅ Email sent successfully:", response);
+    alert('Email sent successfully!');
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+    alert('Failed to send email.');
+  }
 };
+
+
+
+
+
 </script>
