@@ -4,7 +4,7 @@
       <div class="h-2/5 flex justify-center">
         <div class="w-1/2 flex justify-center rounded-xl border-2 bg-white">
           <div class="w-auto flex flex-col justify-evenly">
-            <div class="">
+            <div class="flex justify-center">
               <NavigationButtons
                 :options="options"
                 v-model:currentOption="currentOption"
@@ -12,19 +12,14 @@
             </div>
             <div class="">
               <p class="font-bold text-3xl text-center">Pildymas</p>
-              <hr class="mt-2" />
+              <hr class="mt-2 my-2" />
 
               <!-- Conditional Rendering of Interfaces -->
-              <div class="mb-8">
+              <div class="mb-8 w-64">
                 <EmailInput
                   v-if="currentOption === 'email'"
                   :recipient="recipient"
                   @updateRecipient="recipient = $event"
-                />
-
-                <FileUpload
-                  v-if="currentOption === 'csv'"
-                  @updateEmails="updateEmails"
                 />
                 <GroupSelection v-if="currentOption === 'group'" @updateEmails="updateEmails" />
               </div>
@@ -39,30 +34,21 @@
           :recipient="recipient"
           :attachedFiles="attachedFiles"
           @updateSubject="updateSubject" 
-          @updateMessage="updateMessage" 
+          @updateMessage="updateMessage"
+          @updateAttachedFiles="updateAttachedFiles"
         />
-        <input 
-          type="file" 
-          multiple 
-          @change="handleFileUpload" 
-          class="mt-4"
-        />
-        <!-- Show attached files -->
-        <div v-if="attachedFiles.length > 0" class="mt-4">
-          <p>Pridėti failai:</p>
-          <ul>
-            <li v-for="(file, index) in attachedFiles" :key="index" class="flex items-center">
-              {{ file.name }} ({{ formatFileSize(file.size) }})
-              <button @click="removeFile(index)" class="text-red-500 ml-2">Pašalinti</button>
-            </li>
-          </ul>
-        </div>
+        
+        <!-- REMOVED: File upload input as it's now handled by TextArea -->
+        
+        <!-- Show attached files - REMOVED as this is now handled by TextArea -->
+        <div class="flex justify-end mr-4">
         <button 
           @click="sendEmail" 
           class="border-2 p-4 w-48 rounded-xl bg-green-700 text-white font-bold text-xl ml-2"
         >
           Siųsti
         </button>
+      </div>
       </div>
     </div>
   </div>
@@ -79,7 +65,6 @@ const recipientsList = ref([]); // Holds the list of email recipients (can be si
 // Options for navigation
 const options = [
   { id: 'email', label: 'Vienam' },
-  { id: 'csv', label: 'CSV' },
   { id: 'group', label: 'Grupei' },
 ];
 
@@ -113,18 +98,16 @@ const updateMessage = (newMessage) => {
   message.value = newMessage;
 };
 
-// Function to handle file uploads
-const handleFileUpload = (event) => {
-  const files = event.target.files;
-  attachedFiles.value = [...attachedFiles.value, ...files];
+// NEW: Handle file updates from TextArea component
+const updateAttachedFiles = (files) => {
+  attachedFiles.value = files;
 };
 
-// Function to remove a file
-const removeFile = (index) => {
-  attachedFiles.value.splice(index, 1);
-};
+// Function to handle file uploads - REMOVED as it's now in TextArea
 
-// Format file size for display
+// Function to remove a file - REMOVED as it's now in TextArea
+
+// Format file size for display - KEPT for potential future use
 const formatFileSize = (bytes) => {
   if (bytes < 1024) {
     return bytes + ' B';
