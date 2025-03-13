@@ -26,7 +26,7 @@
                   v-if="currentOption === 'csv'"
                   @updateEmails="updateEmails"
                 />
-                <GroupSelection v-if="currentOption === 'group'" />
+                <GroupSelection v-if="currentOption === 'group'" @updateEmails="updateEmails" />
               </div>
             </div>
           </div>
@@ -136,11 +136,25 @@ const formatFileSize = (bytes) => {
 };
 
 const sendEmail = async () => {
-  console.log("📩 Debugging recipient before sending:", recipient.value);
-
-  if (!recipient.value || recipient.value.trim() === '') {
-    alert("❌ Please enter a valid email!");
-    return;
+  // For group selection, use the recipientsList instead of single recipient
+  let recipientsToUse = '';
+  
+  if (currentOption.value === 'group' || currentOption.value === 'csv') {
+    // Join the array of emails with commas for multiple recipients
+    recipientsToUse = recipientsList.value.join(',');
+    
+    if (!recipientsToUse) {
+      alert("❌ Please select a group with valid emails!");
+      return;
+    }
+  } else {
+    // Single email case
+    recipientsToUse = recipient.value;
+    
+    if (!recipientsToUse || recipientsToUse.trim() === '') {
+      alert("❌ Please enter a valid email!");
+      return;
+    }
   }
 
   // Prepare attachments
@@ -156,7 +170,7 @@ const sendEmail = async () => {
   }
 
   const emailData = {
-    recipient: recipient.value.trim(),
+    recipient: recipientsToUse, // This now contains either a single email or comma-separated list
     subject: subject.value.trim(),
     message: message.value.trim(),
     attachments: attachments  // Add attachments to email data
