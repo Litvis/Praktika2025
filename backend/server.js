@@ -5,6 +5,7 @@ import pkg from 'pg';
 import './auth/google.js'; // Ensure Google OAuth strategy is imported
 import authRoutes from './routes/OAuth.js'; // Import OAuth routes
 import session from 'express-session';
+import pgSession from 'connect-pg-simple';
 import passport from 'passport';
 import dotenv from 'dotenv';
 import multer from 'multer'; // For handling multipart/form-data (file uploads)
@@ -50,14 +51,104 @@ const upload = multer({
 // Set up SendGrid API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// Set up PostgreSQL client
-const { Client } = pkg;
-const client = new Client({
+// Set up PostgreSQL connection pool instead of a single client
+const { Pool } = pkg;
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  max: 10, // Maximum connections in pool
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 });
 
-client.connect();
+// Add error handling for the pool
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL client:', err);
+  // Don't crash the server on connection errors
+});
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection error:', err);
+  } else {
+    console.log('PostgreSQL connected successfully at:', res.rows[0].now);
+  }
+});
+
+// Function to ensure sessions table exists
+async function ensureSessionTableExists() {
+  try {
+    console.log('Checking for sessions table...');
+    const checkTableResult = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        AND table_name = 'sessions'
+      );
+    `);
+    
+    const tableExists = checkTableResult.rows[0].exists;
+    
+    if (!tableExists) {
+      console.log('Creating sessions table...');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS "sessions" (
+          "sid" varchar NOT NULL COLLATE "default",
+          "sess" json NOT NULL,
+          "expire" timestamp(6) NOT NULL,
+          CONSTRAINT "sessions_pkey" PRIMARY KEY ("sid")
+        );
+        CREATE INDEX IF NOT EXISTS "IDX_sessions_expire" ON "sessions" ("expire");
+      `);
+      console.log('Sessions table created successfully');
+    } else {
+      console.log('Sessions table already exists');
+    }
+  } catch (error) {
+    console.error('Error ensuring sessions table exists:', error);
+  }
+}
+
+// Initialize PostgreSQL session store
+const PgStore = pgSession(session);
+
+// Ensure sessions table exists before setting up session middleware
+ensureSessionTableExists().then(() => {
+  // Set up session middleware with PostgreSQL store
+  app.use(session({
+    store: new PgStore({
+      pool: pool,
+      tableName: 'sessions',
+      createTableIfMissing: true, // Belt and suspenders approach
+    }),
+    secret: process.env.SESSION_SECRET || 'your_fallback_secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      secure: process.env.NODE_ENV === 'production'
+    }
+  }));
+
+  // Initialize passport
+  app.use(passport.initialize());
+  app.use(passport.session());
+  app.use(authRoutes);
+}).catch(err => {
+  console.error('Failed to initialize session store:', err);
+});
+
+// Add middleware to ensure sessions table exists before processing auth routes
+app.use('/auth/*', async (req, res, next) => {
+  try {
+    await ensureSessionTableExists();
+    next();
+  } catch (err) {
+    console.error('Error checking sessions table before auth:', err);
+    next(err);
+  }
+});
 
 // Handle JSON payload emails (with base64 attachments)
 app.post('/send-email', async (req, res) => {
@@ -104,8 +195,8 @@ app.post('/send-email', async (req, res) => {
       ? attachments.map(a => a.filename).join(', ') 
       : null;
 
-    // Save the email data to the database
-    const dbResult = await client.query(
+    // Save the email data to the database - UPDATED to use pool instead of client
+    const dbResult = await pool.query(
       'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
       [subject, message, recipient, attachmentNames]
     );
@@ -181,8 +272,8 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       ? req.files.map(file => file.originalname).join(', ') 
       : null;
 
-    // Save the email data to the database
-    const dbResult = await client.query(
+    // Save the email data to the database - UPDATED to use pool instead of client
+    const dbResult = await pool.query(
       'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
       [subject, message, recipient, attachmentNames]
     );
@@ -196,21 +287,11 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
   }
 });
 
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false
-}));
-
-app.use(passport.initialize());
-app.use(passport.session());
-app.use(authRoutes);
-
-// Update the database schema to include attachments column
+// Update the database schema to include attachments column - UPDATED to use pool instead of client
 app.get('/setup-db', async (req, res) => {
   try {
     // Check if the attachments column exists
-    const checkResult = await client.query(`
+    const checkResult = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name='messages' AND column_name='attachments'
@@ -218,7 +299,7 @@ app.get('/setup-db', async (req, res) => {
     
     // If the column doesn't exist, add it
     if (checkResult.rows.length === 0) {
-      await client.query(
+      await pool.query(
         'ALTER TABLE messages ADD COLUMN attachments TEXT'
       );
       res.status(200).json({ success: true, message: 'Database schema updated successfully' });
@@ -231,6 +312,39 @@ app.get('/setup-db', async (req, res) => {
   }
 });
 
+// Endpoint to check if messages table exists and create it if needed
+app.get('/setup-messages', async (req, res) => {
+  try {
+    // Check if messages table exists
+    const checkResult = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        AND table_name = 'messages'
+      );
+    `);
+    
+    if (!checkResult.rows[0].exists) {
+      // Create messages table if it doesn't exist
+      await pool.query(`
+        CREATE TABLE messages (
+          id SERIAL PRIMARY KEY,
+          subject TEXT,
+          description TEXT,
+          recipient_email TEXT,
+          attachments TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      res.status(200).json({ success: true, message: 'Messages table created successfully' });
+    } else {
+      res.status(200).json({ success: true, message: 'Messages table already exists' });
+    }
+  } catch (error) {
+    console.error('❌ Error creating messages table:', error);
+    res.status(500).json({ error: 'Failed to create messages table', details: error.message });
+  }
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
