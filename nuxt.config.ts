@@ -16,6 +16,12 @@ export default defineNuxtConfig({
         autoprefixer: {},
       },
     }, 
+    router: {
+      options: {
+        linkActiveClass: 'active',
+        linkExactActiveClass: 'exact-active',
+      }
+    },
     components: [
       {
         path: '~/components',
