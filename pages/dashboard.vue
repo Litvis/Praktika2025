@@ -5,7 +5,7 @@
       <!-- Header Section -->
       <div class="px-8 py-6">
         <h1 class="font-bold text-4xl text-gray-800">Sąrašas</h1>
-        <p class="text-gray-500 mt-2">Siųstų laiškų istorija</p>
+        <p class="text-gray-500 mt-2">Siųstų laiškų istorija ({{ totalEmails }})</p>
       </div>
       
       <!-- Table Container -->
@@ -15,8 +15,10 @@
           <div class="relative w-64">
             <input 
               type="text" 
-              placeholder="Ieškoti pagal vardą..." 
+              v-model="searchQuery"
+              placeholder="Ieškoti laiškų..." 
               class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              @input="handleSearch"
             />
             <div class="absolute left-3 top-2.5 text-gray-400">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -26,13 +28,21 @@
           </div>
           
           <div class="flex space-x-2">
-            <button class="flex items-center px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              Filtruoti
-            </button>
-            <button class="flex items-center px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+            <select
+              v-model="dateFilter"
+              class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"
+              @change="fetchEmails"
+            >
+              <option value="all">Visi laikai</option>
+              <option value="today">Šiandien</option>
+              <option value="week">Šią savaitę</option>
+              <option value="month">Šį mėnesį</option>
+            </select>
+            
+            <button 
+              @click="exportEmails" 
+              class="flex items-center px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
@@ -43,46 +53,54 @@
         
         <!-- Table Header -->
         <div class="bg-white rounded-t-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div class="grid grid-cols-3 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <div class="font-semibold text-gray-600">Pilnas vardas</div>
-            <div class="font-semibold text-gray-600 text-center">Laiškas</div>
-            <div class="font-semibold text-gray-600 text-right">Išsiuntimo laikas</div>
+          <div class="grid grid-cols-5 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <div class="font-semibold text-gray-600">ID</div>
+            <div class="font-semibold text-gray-600">Tema</div>
+            <div class="font-semibold text-gray-600">Gavėjas</div>
+            <div class="font-semibold text-gray-600">Išsiuntimo laikas</div>
+            <div class="font-semibold text-gray-600 text-center">Veiksmai</div>
           </div>
           
           <!-- Table Body -->
-          <div v-if="paginatedMessages.length === 0" class="p-8 text-center text-gray-500">
+          <div v-if="emails.length === 0" class="p-8 text-center text-gray-500">
             Nėra laiškų rodymui
           </div>
           
           <div v-else>
             <div 
-              v-for="(msg, index) in paginatedMessages" 
-              :key="index"
-              class="grid grid-cols-3 gap-4 px-6 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150"
+              v-for="(email, index) in emails" 
+              :key="email.id"
+              class="grid grid-cols-5 gap-4 px-6 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150"
               :class="{'bg-gray-50': index % 2 === 1}"
             >
               <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center mr-3 font-medium">
-                  {{ getInitials(msg.name) }}
-                </div>
-                <span class="font-medium text-gray-800">{{ msg.name }}</span>
+                <span class="font-medium text-gray-500">{{ email.id }}</span>
+              </div>
+              
+              <div class="truncate font-medium text-gray-800">
+                {{ email.subject }}
+              </div>
+              
+              <div class="truncate text-gray-600">
+                {{ email.recipient_email }}
+              </div>
+              
+              <div class="text-gray-600">
+                <span class="font-medium">{{ formatDay(new Date(email.created_at)) }}</span>
+                <div class="text-sm text-gray-500">{{ formatTime(new Date(email.created_at)) }}</div>
               </div>
               
               <div class="flex justify-center">
-                <button class="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
+                <button 
+                  @click="viewEmail(email.id)" 
+                  class="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
                   Peržiūrėti laišką
                 </button>
-              </div>
-              
-              <div class="flex items-center justify-end">
-                <div class="text-right">
-                  <span class="font-medium text-gray-800">{{ formatDay(msg.timestamp) }}</span>
-                  <div class="text-sm text-gray-500">{{ formatTime(msg.timestamp) }}</div>
-                </div>
               </div>
             </div>
           </div>
@@ -91,7 +109,7 @@
         <!-- Pagination -->
         <div class="flex justify-between items-center mt-6">
           <div class="text-sm text-gray-600">
-            Rodoma {{ ((currentPage - 1) * itemsPerPage) + 1 }}-{{ Math.min(currentPage * itemsPerPage, messages.length) }} iš {{ messages.length }} įrašų
+            Rodoma {{ ((currentPage - 1) * itemsPerPage) + 1 }}-{{ Math.min(currentPage * itemsPerPage, totalEmails) }} iš {{ totalEmails }} įrašų
           </div>
           
           <div class="flex space-x-1">
@@ -109,7 +127,7 @@
             <template v-for="page in displayedPages" :key="page">
               <button 
                 v-if="page !== '...'"
-                @click="goToPage(page as number)" 
+                @click="goToPage(page)" 
                 class="flex items-center justify-center w-9 h-9 rounded-lg border" 
                 :class="currentPage === page ? 'bg-green-600 text-white border-green-600' : 'text-gray-600 border-gray-300 hover:bg-gray-50'"
               >
@@ -140,90 +158,85 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import Sidebar from '~/components/adminlanding/Sidebar.vue';
+<script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import Sidebar from '~/components/adminlanding/Sidebar.vue';
 
-// Define message structure using an interface
-interface Message {
-  name: string;
-  timestamp: string;
-}
+// Router for navigation
+const router = useRouter();
 
 // Reactive state
-const messages = ref<Message[]>([]);  // Store the list of messages
-const currentPage = ref(1);  // Current page
-const itemsPerPage = 5; // Number of items per page
+const emails = ref([]);
+const totalEmails = ref(0);
+const currentPage = ref(1);
+const itemsPerPage = 10;
+const searchQuery = ref('');
+const dateFilter = ref('all');
+const isLoading = ref(false);
 
-// User data state
-const user = ref(null); // Store user data
-
-// Dummy messages
-const generateDummyMessages = (): Message[] => {
-  return [
-    { name: "Jonas Jonaitis", timestamp: "2025-03-03T08:15:00Z" },
-    { name: "Ona Petraitė", timestamp: "2025-03-03T09:00:00Z" },
-    { name: "Petras Kazlauskas", timestamp: "2025-03-03T10:30:00Z" },
-    { name: "Laura Vilkaitė", timestamp: "2025-03-03T11:45:00Z" },
-    { name: "Marius Stankevičius", timestamp: "2025-03-03T13:10:00Z" },
-    { name: "Eglė Jakštaitė", timestamp: "2025-03-03T14:00:00Z" },
-    { name: "Rokas Mažeika", timestamp: "2025-03-03T15:20:00Z" },
-    { name: "Indrė Žemaitė", timestamp: "2025-03-03T16:35:00Z" },
-    { name: "Tadas Pocius", timestamp: "2025-03-03T17:50:00Z" },
-    { name: "Lina Jankauskaitė", timestamp: "2025-03-03T19:05:00Z" },
-    { name: "Karolis Butkus", timestamp: "2025-03-04T08:30:00Z" },
-    { name: "Aistė Vaitkutė", timestamp: "2025-03-04T09:45:00Z" },
-    { name: "Dovydas Balsys", timestamp: "2025-03-04T11:00:00Z" },
-    { name: "Ieva Rimaitė", timestamp: "2025-03-04T12:15:00Z" },
-    { name: "Vytautas Jankauskas", timestamp: "2025-03-04T13:30:00Z" }
-  ];
+// Fetch emails from the backend
+const fetchEmails = async () => {
+  try {
+    isLoading.value = true;
+    
+    // Calculate offset for pagination
+    const offset = (currentPage.value - 1) * itemsPerPage;
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('limit', itemsPerPage.toString());
+    params.append('offset', offset.toString());
+    
+    if (searchQuery.value) {
+      params.append('search', searchQuery.value);
+    }
+    
+    if (dateFilter.value !== 'all') {
+      params.append('dateFilter', dateFilter.value);
+    }
+    
+    // Fetch data from API
+    const response = await fetch(`https://praktika2025.onrender.com/api/emails/recent?${params.toString()}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      emails.value = data.data.emails;
+      totalEmails.value = data.data.pagination.total;
+    } else {
+      console.error('Failed to fetch emails:', data.error);
+    }
+  } catch (error) {
+    console.error('Error fetching emails:', error);
+  } finally {
+    isLoading.value = false;
+  }
 };
 
-// Fetch user data from backend and messages
-onMounted(async () => {
-  try {
-    // Simulate fetching messages (using dummy data here)
-    messages.value = generateDummyMessages();
-  } catch (error) {
-    console.error('Error fetching user data:', error);
-  }
-});
+// Handle search with debounce
+let searchTimeout;
+const handleSearch = () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1; // Reset to first page when searching
+    fetchEmails();
+  }, 300);
+};
 
-// Pagination logic
-const paginatedMessages = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  const paginated = messages.value.slice(start, start + itemsPerPage);
-  return paginated;
-});
-
-const totalPages = computed(() => Math.ceil(messages.value.length / itemsPerPage));
-
-// Format date and time separately for better layout
-const formatDay = (timestamp: string): string => {
-  const date = new Date(timestamp);
+// Format date and time
+const formatDay = (date) => {
   return date.toLocaleDateString('lt-LT', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-const formatTime = (timestamp: string): string => {
-  const date = new Date(timestamp);
+const formatTime = (date) => {
   return date.toLocaleTimeString('lt-LT', { hour: '2-digit', minute: '2-digit' });
 };
 
-// Get initials from a person's name
-const getInitials = (name: string): string => {
-  return name
-    .split(' ')
-    .map(part => part.charAt(0))
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
-};
+// Pagination logic
+const totalPages = computed(() => Math.ceil(totalEmails.value / itemsPerPage));
 
 // Enhanced pagination controls with ellipsis for many pages
-// Define a type for pagination items that can be numbers or ellipsis
-type PaginationItem = number | '...';
-
-const displayedPages = computed((): PaginationItem[] => {
+const displayedPages = computed(() => {
   if (totalPages.value <= 7) {
     return Array.from({ length: totalPages.value }, (_, i) => i + 1);
   }
@@ -242,16 +255,70 @@ const displayedPages = computed((): PaginationItem[] => {
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++;
+    fetchEmails();
   }
 };
 
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--;
+    fetchEmails();
   }
 };
 
-const goToPage = (page: number) => {
+const goToPage = (page) => {
   currentPage.value = page;
+  fetchEmails();
 };
+
+// View email details
+const viewEmail = (id) => {
+  router.push(`/emails/${id}`);
+};
+
+// Export emails as CSV
+const exportEmails = async () => {
+  try {
+    // Fetch all emails for export (without pagination)
+    const response = await fetch(`https://praktika2025.onrender.com/api/emails/recent?limit=1000&dateFilter=${dateFilter.value}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      // Convert to CSV format
+      const headers = ['ID', 'Tema', 'Gavėjas', 'Išsiuntimo laikas', 'Priedai'];
+      const csvRows = [headers.join(',')];
+      
+      data.data.emails.forEach(email => {
+        const row = [
+          email.id,
+          `"${email.subject.replace(/"/g, '""')}"`, // Escape quotes
+          email.recipient_email,
+          new Date(email.created_at).toLocaleString('lt-LT'),
+          email.attachments ? 'Taip' : 'Ne'
+        ];
+        csvRows.push(row.join(','));
+      });
+      
+      const csvContent = csvRows.join('\n');
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `issiusti-laiskai-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  } catch (error) {
+    console.error('Error exporting emails:', error);
+    alert('Nepavyko eksportuoti laiškų.');
+  }
+};
+
+// Load data when component mounts
+onMounted(() => {
+  fetchEmails();
+});
 </script>

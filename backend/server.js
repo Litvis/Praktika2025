@@ -210,6 +210,148 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
+// Add these endpoints to your server.js file
+
+// Endpoint to get dashboard stats
+app.get('/api/dashboard/stats', async (req, res) => {
+  try {
+    // Get total emails count
+    const countResult = await client.query('SELECT COUNT(*) FROM messages');
+    const totalEmails = parseInt(countResult.rows[0].count);
+    
+    // Get the most recent email
+    const lastEmailResult = await client.query(
+      'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages ORDER BY created_at DESC LIMIT 1'
+    );
+    const lastEmail = lastEmailResult.rows[0] || null;
+    
+    // Get the count of emails sent in the last 30 days
+    const recentCountResult = await client.query(
+      'SELECT COUNT(*) FROM messages WHERE created_at > NOW() - INTERVAL \'30 day\''
+    );
+    const recentEmails = parseInt(recentCountResult.rows[0].count);
+    
+    // Return all stats
+    res.status(200).json({
+      success: true,
+      data: {
+        totalEmails,
+        recentEmails,
+        lastEmail
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching dashboard stats:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats', details: error.message });
+  }
+});
+
+// Endpoint to get recent emails
+app.get('/api/emails/recent', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    // Get recent emails with pagination
+    const emailsResult = await client.query(
+      'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
+    
+    // Get total count for pagination
+    const countResult = await client.query('SELECT COUNT(*) FROM messages');
+    const totalCount = parseInt(countResult.rows[0].count);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        emails: emailsResult.rows,
+        pagination: {
+          total: totalCount,
+          limit,
+          offset,
+          hasMore: offset + limit < totalCount
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching recent emails:', error);
+    res.status(500).json({ error: 'Failed to fetch recent emails', details: error.message });
+  }
+});
+
+// Endpoint to get a specific email by ID
+app.get('/api/emails/:id', async (req, res) => {
+  try {
+    const emailId = req.params.id;
+    
+    const emailResult = await client.query(
+      'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages WHERE id = $1',
+      [emailId]
+    );
+    
+    if (emailResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Email not found' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: emailResult.rows[0]
+    });
+  } catch (error) {
+    console.error(`❌ Error fetching email with ID ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch email', details: error.message });
+  }
+});
+
+// Endpoint to get emails stats by day (for charts)
+app.get('/api/emails/stats/daily', async (req, res) => {
+  try {
+    // Get count of emails sent per day for the last 30 days
+    const statsResult = await client.query(
+      `SELECT 
+        DATE(created_at) as date, 
+        COUNT(*) as count 
+      FROM messages 
+      WHERE created_at > NOW() - INTERVAL '30 day' 
+      GROUP BY DATE(created_at) 
+      ORDER BY date ASC`
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: statsResult.rows
+    });
+  } catch (error) {
+    console.error('❌ Error fetching daily email stats:', error);
+    res.status(500).json({ error: 'Failed to fetch daily email stats', details: error.message });
+  }
+});
+
+// Endpoint to get email recipient distribution (for charts)
+app.get('/api/emails/stats/recipients', async (req, res) => {
+  try {
+    // Get count of emails sent to each recipient
+    const statsResult = await client.query(
+      `SELECT 
+        recipient_email, 
+        COUNT(*) as count 
+      FROM messages 
+      GROUP BY recipient_email 
+      ORDER BY count DESC 
+      LIMIT 10`
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: statsResult.rows
+    });
+  } catch (error) {
+    console.error('❌ Error fetching recipient stats:', error);
+    res.status(500).json({ error: 'Failed to fetch recipient stats', details: error.message });
+  }
+});
+
 // Alternative multipart form-data approach for file uploads
 app.post('/send-email-multipart', upload.array('files', 10), async (req, res) => {
   try {
