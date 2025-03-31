@@ -137,7 +137,7 @@
   
   // Navigation
   const goBack = () => {
-    router.push('/emails');
+    router.push('/dashboard');
   };
   
   // Fetch email details when component mounts
