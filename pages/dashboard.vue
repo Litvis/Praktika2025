@@ -178,12 +178,6 @@ const isLoading = ref(false);
 // Fetch emails from the backend
 const fetchEmails = async () => {
   try {
-    console.log('Fetching emails with:', {
-      limit: itemsPerPage,
-      offset: (currentPage.value - 1) * itemsPerPage,
-      search: searchQuery.value, // Verify this is working
-      dateFilter: dateFilter.value
-    });
     isLoading.value = true;
     
     // Calculate offset for pagination
@@ -224,11 +218,11 @@ let searchTimeout;
 const handleSearch = () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    console.log('Search Query:', searchQuery.value); // Add this line
-    currentPage.value = 1;
+    currentPage.value = 1; // Reset to first page when searching
     fetchEmails();
   }, 300);
 };
+
 // Format date and time
 const formatDay = (date) => {
   return date.toLocaleDateString('lt-LT', { year: 'numeric', month: '2-digit', day: '2-digit' });
