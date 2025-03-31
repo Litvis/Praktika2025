@@ -78,6 +78,49 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
+// Function to create users table if it doesn't exist
+async function ensureUsersTableExists() {
+  try {
+    console.log('Checking for users table...');
+    const checkTableResult = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        AND table_name = 'users'
+      );
+    `);
+    
+    const tableExists = checkTableResult.rows[0].exists;
+    
+    if (!tableExists) {
+      console.log('Creating users table...');
+      await pool.query(`
+        CREATE TABLE users (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          name VARCHAR(255),
+          role VARCHAR(50) DEFAULT 'worker',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      // Insert some initial admin users if needed
+      await pool.query(`
+        INSERT INTO users (email, name, role) VALUES 
+        ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
+        ON CONFLICT (email) DO NOTHING;
+      `);
+      
+      console.log('Users table created successfully');
+    } else {
+      console.log('Users table already exists');
+    }
+  } catch (error) {
+    console.error('Error ensuring users table exists:', error);
+    throw error;
+  }
+}
+
 // Function to ensure sessions table exists
 async function ensureSessionTableExists() {
   try {
@@ -229,7 +272,7 @@ app.get('/setup-users-table', async (req, res) => {
     // Insert some initial admin users if needed
     await pool.query(`
       INSERT INTO users (email, name, role) VALUES 
-      ('your-admin-email@example.com', 'Admin User', 'admin')
+      ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
       ON CONFLICT (email) DO NOTHING;
     `);
     
@@ -573,7 +616,24 @@ app.get('/setup-messages', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+// Modify your existing server startup logic
+async function startServer() {
+  try {
+    // Ensure users table exists before starting the server
+    await ensureUsersTableExists();
+
+    // Your existing session table check and server startup code
+    await ensureSessionTableExists();
+
+    const PORT = process.env.PORT || 3001;
+    app.listen(PORT, () => {
+      console.log(`Server is running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Call the startServer function instead of direct app.listen
+startServer();
