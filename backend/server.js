@@ -13,7 +13,6 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import googleAuthRouter from './auth/google.js';
-import authRoutes from './routes/OAuth.js';
 
 dotenv.config();
 
