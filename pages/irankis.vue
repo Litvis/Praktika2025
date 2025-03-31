@@ -1,54 +1,60 @@
 <template>
-  <div class="flex justify-center place-items-center h-screen">
-    <div class="w-full grid grid-cols-2 bg-gray-100 mx-8 py-24 items-center border rounded-xl">
-      <div class="h-2/5 flex justify-center">
-        <div class="w-1/2 flex justify-center rounded-xl border-2 bg-white">
-          <div class="w-auto flex flex-col justify-evenly">
-            <div class="flex justify-center">
-              <NavigationButtons
-                :options="options"
-                v-model:currentOption="currentOption"
-              />
-            </div>
-            <div class="">
-              <p class="font-bold text-3xl text-center">Pildymas</p>
-              <hr class="mt-2 my-2" />
-
-              <!-- Conditional Rendering of Interfaces -->
-              <div class="mb-8 w-64">
-                <EmailInput
-                  v-if="currentOption === 'email'"
-                  :recipient="recipient"
-                  @updateRecipient="recipient = $event"
+  <div class="flex flex-col md:flex-row h-screen">
+    <Sidebar class="md:w-1/5 lg:w-1/6" />
+    <div class="p-4 w-full">
+      <div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-8">
+          <div class="flex items-center justify-center">
+            <div class="w-full max-w-md bg-white rounded-xl border-2 p-6">
+              <div class="mb-4 md:mb-6">
+                <NavigationButtons
+                  :options="options"
+                  v-model:currentOption="currentOption"
                 />
-                <GroupSelection v-if="currentOption === 'group'" @updateEmails="updateEmails" />
+              </div>
+              <div>
+                <p class="font-bold text-xl md:text-3xl text-center mb-2 md:mb-4">Pildymas</p>
+                <hr class="mb-2 md:mb-4" />
+
+                <div class="mb-4 md:mb-8">
+                  <EmailInput
+                    v-if="currentOption === 'email'"
+                    :recipient="recipient"
+                    @updateRecipient="recipient = $event"
+                  />
+                  <GroupSelection 
+                    v-if="currentOption === 'group'" 
+                    @updateEmails="updateEmails" 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex items-center justify-center w-full">
+            <div class="w-full flex flex-col ">
+              <TextArea 
+                class="flex-grow"
+                :subject="subject" 
+                :message="message"
+                :recipient="recipient"
+                :attachedFiles="attachedFiles"
+                @updateSubject="updateSubject" 
+                @updateMessage="updateMessage"
+                @updateAttachedFiles="updateAttachedFiles"
+              />
+              
+              <div class="flex justify-end mt-2 md:mt-4 self-end">
+                <button 
+                  @click="sendEmail" 
+                  class="w-full md:w-48 p-2 md:p-4 rounded-xl bg-green-700 text-white font-bold text-sm md:text-xl"
+                >
+                  Siųsti
+                </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="w-full p-16">
-        <TextArea 
-          :subject="subject" 
-          :message="message"
-          :recipient="recipient"
-          :attachedFiles="attachedFiles"
-          @updateSubject="updateSubject" 
-          @updateMessage="updateMessage"
-          @updateAttachedFiles="updateAttachedFiles"
-        />
-        
-        <!-- REMOVED: File upload input as it's now handled by TextArea -->
-        
-        <!-- Show attached files - REMOVED as this is now handled by TextArea -->
-        <div class="flex justify-end mr-4">
-        <button 
-          @click="sendEmail" 
-          class="border-2 p-4 w-48 rounded-xl bg-green-700 text-white font-bold text-xl ml-2"
-        >
-          Siųsti
-        </button>
-      </div>
       </div>
     </div>
   </div>
@@ -56,11 +62,16 @@
 
 <script setup>
 import { ref } from 'vue';
+import Sidebar from '~/components/adminlanding/Sidebar.vue';
+import NavigationButtons from '~/components/irankis/NavigationButtons.vue';
+import EmailInput from '~/components/irankis/EmailInput.vue';
+import GroupSelection from '~/components/irankis/GroupSelection.vue';
+import TextArea from '~/components/irankis/TextArea.vue';
 
 // State for current option and recipient
 const currentOption = ref('email');
 const recipient = ref('');
-const recipientsList = ref([]); // Holds the list of email recipients (can be single or multiple)
+const recipientsList = ref([]);
 
 // Options for navigation
 const options = [
@@ -78,15 +89,14 @@ const attachedFiles = ref([]);
 // Update handlers for email, subject, and message
 const updateRecipient = (newRecipient) => {
   recipient.value = newRecipient;
-  recipientsList.value = [newRecipient];  // Update recipientsList to contain just the single email
+  recipientsList.value = [newRecipient];
 };
 
 const updateEmails = (newEmails) => {
-  // If the newEmails array contains only one email, ensure it's a valid email
   if (newEmails.length === 1 && newEmails[0]) {
-    recipientsList.value = [newEmails[0].trim()]; // Ensure trimming any whitespace
+    recipientsList.value = [newEmails[0].trim()];
   } else {
-    recipientsList.value = newEmails; // Otherwise, use all the emails
+    recipientsList.value = newEmails;
   }
 };
 
@@ -98,32 +108,14 @@ const updateMessage = (newMessage) => {
   message.value = newMessage;
 };
 
-// NEW: Handle file updates from TextArea component
 const updateAttachedFiles = (files) => {
   attachedFiles.value = files;
 };
 
-// Function to handle file uploads - REMOVED as it's now in TextArea
-
-// Function to remove a file - REMOVED as it's now in TextArea
-
-// Format file size for display - KEPT for potential future use
-const formatFileSize = (bytes) => {
-  if (bytes < 1024) {
-    return bytes + ' B';
-  } else if (bytes < 1048576) {
-    return (bytes / 1024).toFixed(2) + ' KB';
-  } else {
-    return (bytes / 1048576).toFixed(2) + ' MB';
-  }
-};
-
 const sendEmail = async () => {
-  // For group selection, use the recipientsList instead of single recipient
   let recipientsToUse = '';
   
   if (currentOption.value === 'group' || currentOption.value === 'csv') {
-    // Join the array of emails with commas for multiple recipients
     recipientsToUse = recipientsList.value.join(',');
     
     if (!recipientsToUse) {
@@ -131,7 +123,6 @@ const sendEmail = async () => {
       return;
     }
   } else {
-    // Single email case
     recipientsToUse = recipient.value;
     
     if (!recipientsToUse || recipientsToUse.trim() === '') {
@@ -140,12 +131,11 @@ const sendEmail = async () => {
     }
   }
 
-  // Prepare attachments
   const attachments = [];
   for (const file of attachedFiles.value) {
     const base64Content = await fileToBase64(file);
     attachments.push({
-      content: base64Content.split(',')[1], // Remove data URL prefix
+      content: base64Content.split(',')[1],
       filename: file.name,
       type: file.type,
       disposition: 'attachment'
@@ -153,10 +143,10 @@ const sendEmail = async () => {
   }
 
   const emailData = {
-    recipient: recipientsToUse, // This now contains either a single email or comma-separated list
+    recipient: recipientsToUse,
     subject: subject.value.trim(),
     message: message.value.trim(),
-    attachments: attachments  // Add attachments to email data
+    attachments: attachments
   };
 
   console.log("📤 Sending email data:", JSON.stringify(emailData, null, 2));
@@ -173,7 +163,6 @@ const sendEmail = async () => {
     console.log("✅ Email sent successfully:", response);
     alert('Email sent successfully!');
     
-    // Clear files after sending
     attachedFiles.value = [];
   } catch (error) {
     console.error('❌ Error sending email:', error);
@@ -181,7 +170,6 @@ const sendEmail = async () => {
   }
 };
 
-// Helper function to convert file to base64
 const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

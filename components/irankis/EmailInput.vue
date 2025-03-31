@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col">
-    <label for="email" class="text-md font-medium text-gray-700 ml-2">
+  <div class="w-full">
+    <label for="email" class="block text-sm md:text-md font-medium text-gray-700 mb-2">
       Elektroninio pašto adresas
     </label>
     <input
@@ -8,7 +8,10 @@
       id="email"
       v-model="inputValue"
       placeholder="Recipient Email"
-      class="mt-2 block w-full px-4 py-2 text-gray-700 border-2 border-green-600 rounded-md shadow-lg focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-green-800 placeholder-gray-400"
+      class="w-full px-3 py-2 md:px-4 md:py-2 text-sm md:text-base text-gray-700 
+             border-2 border-green-600 rounded-md shadow-lg 
+             focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-green-800 
+             placeholder-gray-400"
     />
   </div>
 </template>

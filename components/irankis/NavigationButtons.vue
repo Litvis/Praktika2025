@@ -1,15 +1,18 @@
 <template>
-    <div class="space-x-4">
-      <button
-        v-for="option in options"
-        :key="option.id"
-        :class="['px-4 py-2 rounded shadow font-semibold', currentOption === option.id ? 'bg-green-700 text-white' : 'bg-gray-200']"
-        @click="changeOption(option.id)"
-      >
-        {{ option.label }}
-      </button>
-    </div>
-  </template>
+  <div class="flex justify-center space-x-2 md:space-x-4">
+    <button
+      v-for="option in options"
+      :key="option.id"
+      :class="[
+        'px-3 py-1 md:px-4 md:py-2 rounded shadow text-xs md:text-sm font-semibold', 
+        currentOption === option.id ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-700'
+      ]"
+      @click="changeOption(option.id)"
+    >
+      {{ option.label }}
+    </button>
+  </div>
+</template>
   
   <script setup>
   import { defineProps, defineEmits } from 'vue';

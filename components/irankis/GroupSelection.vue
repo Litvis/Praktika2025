@@ -1,13 +1,15 @@
 <template>
-  <div class="flex flex-col">
-    <label for="group" class="text-md font-medium text-gray-700 ml-2">
+  <div class="w-full">
+    <label for="group" class="block text-sm md:text-md font-medium text-gray-700 mb-2">
       Pasirinkite grupę
     </label>
     <select
       id="group"
       v-model="selectedGroup"
       @change="updateSelectedGroup"
-      class="mt-2 block w-full px-4 py-2 text-gray-700 border-2 border-green-600 rounded-md shadow-lg focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-green-800"
+      class="w-full px-3 py-2 md:px-4 md:py-2 text-sm md:text-base text-gray-700 
+             border-2 border-green-600 rounded-md shadow-lg 
+             focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-green-800"
     >
       <option value="" disabled>Pasirinkite grupę</option>
       <option v-for="group in groups" :key="group.id" :value="group.id">
@@ -16,14 +18,14 @@
     </select>
 
     <!-- Preview of selected group's recipients -->
-    <div v-if="selectedGroup && selectedGroupEmails.length > 0" class="mt-4">
-      <p class="text-sm font-medium text-gray-700 ml-2">Pasirinktos grupės gavėjai:</p>
-      <div class="mt-2 p-2 border rounded-md bg-gray-50 max-h-32 overflow-y-auto">
-        <div v-for="(email, index) in selectedGroupEmails" :key="index" class="text-sm text-gray-600">
+    <div v-if="selectedGroup && selectedGroupEmails.length > 0" class="mt-3 md:mt-4">
+      <p class="text-xs md:text-sm font-medium text-gray-700">Pasirinktos grupės gavėjai:</p>
+      <div class="mt-1 md:mt-2 p-2 border rounded-md bg-gray-50 max-h-32 overflow-y-auto">
+        <div v-for="(email, index) in selectedGroupEmails" :key="index" class="text-xs md:text-sm text-gray-600">
           {{ email }}
         </div>
       </div>
-      <p class="text-xs text-gray-500 mt-1 ml-2">Viso: {{ selectedGroupEmails.length }} gavėjų</p>
+      <p class="text-[10px] md:text-xs text-gray-500 mt-1">Viso: {{ selectedGroupEmails.length }} gavėjų</p>
     </div>
   </div>
 </template>
