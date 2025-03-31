@@ -5,7 +5,7 @@ import pkg from 'pg';
 import './auth/google.js'; // Ensure Google OAuth strategy is imported
 import authRoutes from './routes/OAuth.js'; // Import OAuth routes
 import session from 'express-session';
-import pgSession from 'connect-pg-simple';
+import connectPgSimple from 'connect-pg-simple';
 import passport from 'passport';
 import dotenv from 'dotenv';
 import multer from 'multer'; // For handling multipart/form-data (file uploads)
@@ -121,13 +121,13 @@ async function ensureUsersTableExists() {
     throw error;
   }
 }
-
+// Configure session store
+const PgStore = connectPgSimple(session);
 const sessionStore = new PgStore({
   pool: pool,
   tableName: 'sessions',
   createTableIfMissing: true
 });
-
 // Middleware setup
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
