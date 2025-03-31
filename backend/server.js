@@ -216,17 +216,17 @@ app.post('/send-email', async (req, res) => {
 app.get('/api/dashboard/stats', async (req, res) => {
   try {
     // Get total emails count
-    const countResult = await client.query('SELECT COUNT(*) FROM messages');
+    const countResult = await pool.query('SELECT COUNT(*) FROM messages');
     const totalEmails = parseInt(countResult.rows[0].count);
     
     // Get the most recent email
-    const lastEmailResult = await client.query(
+    const lastEmailResult = await pool.query(
       'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages ORDER BY created_at DESC LIMIT 1'
     );
     const lastEmail = lastEmailResult.rows[0] || null;
     
     // Get the count of emails sent in the last 30 days
-    const recentCountResult = await client.query(
+    const recentCountResult = await pool.query(
       'SELECT COUNT(*) FROM messages WHERE created_at > NOW() - INTERVAL \'30 day\''
     );
     const recentEmails = parseInt(recentCountResult.rows[0].count);
@@ -253,13 +253,13 @@ app.get('/api/emails/recent', async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
     
     // Get recent emails with pagination
-    const emailsResult = await client.query(
+    const emailsResult = await pool.query(
       'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages ORDER BY created_at DESC LIMIT $1 OFFSET $2',
       [limit, offset]
     );
     
     // Get total count for pagination
-    const countResult = await client.query('SELECT COUNT(*) FROM messages');
+    const countResult = await pool.query('SELECT COUNT(*) FROM messages');
     const totalCount = parseInt(countResult.rows[0].count);
     
     res.status(200).json({
@@ -285,7 +285,7 @@ app.get('/api/emails/:id', async (req, res) => {
   try {
     const emailId = req.params.id;
     
-    const emailResult = await client.query(
+    const emailResult = await pool.query(
       'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages WHERE id = $1',
       [emailId]
     );
@@ -308,7 +308,7 @@ app.get('/api/emails/:id', async (req, res) => {
 app.get('/api/emails/stats/daily', async (req, res) => {
   try {
     // Get count of emails sent per day for the last 30 days
-    const statsResult = await client.query(
+    const statsResult = await pool.query(
       `SELECT 
         DATE(created_at) as date, 
         COUNT(*) as count 
@@ -332,7 +332,7 @@ app.get('/api/emails/stats/daily', async (req, res) => {
 app.get('/api/emails/stats/recipients', async (req, res) => {
   try {
     // Get count of emails sent to each recipient
-    const statsResult = await client.query(
+    const statsResult = await pool.query(
       `SELECT 
         recipient_email, 
         COUNT(*) as count 
