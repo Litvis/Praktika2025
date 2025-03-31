@@ -18,7 +18,7 @@ export async function sendEmail(recipient, subject, message) {
 
   const msg = {
     to: recipientsArray,  // ✅ SendGrid expects an array of emails
-    from: 'deividaslitvinenko4@gmail.com', 
+    from: 'Užimtumo tarnyba', 
     subject: subject,
     text: message,
     html: `<p>${message}</p>`,
