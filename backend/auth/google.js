@@ -1,8 +1,8 @@
+import express from 'express';
 import passport from 'passport';
 import GoogleStrategy from 'passport-google-oauth2';
 import dotenv from 'dotenv';
-import { pool } from '../db.js';
-import express from 'express';
+import { pool } from '../db.js'; // Assuming you have a db connection file
 
 dotenv.config();
 
@@ -24,9 +24,8 @@ passport.deserializeUser(async (userData, done) => {
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [userData.email]);
     
     if (userResult.rows.length > 0) {
-      const user = userResult.rows[0];
       done(null, {
-        ...user,
+        ...userResult.rows[0],
         emails: [{ value: userData.email }],
         role: userData.role
       });
@@ -42,9 +41,8 @@ passport.deserializeUser(async (userData, done) => {
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL,
-  passReqToCallback: true
-}, async (request, accessToken, refreshToken, profile, done) => {
+  callbackURL: process.env.GOOGLE_CALLBACK_URL
+}, async (accessToken, refreshToken, profile, done) => {
   try {
     // Check if user exists in our database
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [profile.emails[0].value]);
@@ -84,7 +82,7 @@ router.get('/auth/google/callback',
 );
 
 // Logout route
-router.get('/auth/logout', (req, res, next) => {
+router.get('/auth/logout', (req, res) => {
   req.logout((err) => {
     if (err) { return next(err); }
     res.redirect('/login');
