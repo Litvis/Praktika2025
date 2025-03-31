@@ -192,37 +192,6 @@ app.use('/auth/*', async (req, res, next) => {
   }
 });
 
-async function ensureTablesExist() {
-  try {
-    // Ensure users table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        name VARCHAR(255),
-        role VARCHAR(50) DEFAULT 'worker',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // Ensure sessions table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "sessions" (
-        "sid" varchar NOT NULL COLLATE "default",
-        "sess" json NOT NULL,
-        "expire" timestamp(6) NOT NULL,
-        CONSTRAINT "sessions_pkey" PRIMARY KEY ("sid")
-      );
-      CREATE INDEX IF NOT EXISTS "IDX_sessions_expire" ON "sessions" ("expire");
-    `);
-
-    console.log('Tables ensured');
-  } catch (error) {
-    console.error('Error ensuring tables exist:', error);
-    throw error;
-  }
-}
-
 // Add middleware to ensure sessions table exists before processing auth routes
 app.use('/auth/*', async (req, res, next) => {
   try {

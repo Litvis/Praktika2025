@@ -1,13 +1,9 @@
-import express from 'express';
 import passport from 'passport';
 import GoogleStrategy from 'passport-google-oauth2';
 import dotenv from 'dotenv';
-import { pool } from '../db.js'; // Assuming you have a db connection file
+import { pool } from '../db.js';
 
 dotenv.config();
-
-// Create the router
-const router = express.Router();
 
 // Configure Passport serialization
 passport.serializeUser((user, done) => {
@@ -24,10 +20,11 @@ passport.deserializeUser(async (userData, done) => {
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [userData.email]);
     
     if (userResult.rows.length > 0) {
+      const user = userResult.rows[0];
       done(null, {
-        ...userResult.rows[0],
+        ...user,
         emails: [{ value: userData.email }],
-        role: userData.role
+        role: user.role
       });
     } else {
       done(new Error('User not found'));
@@ -41,26 +38,26 @@ passport.deserializeUser(async (userData, done) => {
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
+  callbackURL: process.env.GOOGLE_CALLBACK_URL,
+  passReqToCallback: true
+}, async (request, accessToken, refreshToken, profile, done) => {
   try {
-    // Check if user exists in our database
-    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [profile.emails[0].value]);
+    // Check if user exists in our database and get their role
+    const userResult = await pool.query(
+      'SELECT * FROM users WHERE email = $1', 
+      [profile.emails[0].value]
+    );
     
-    let user;
+    // If user doesn't exist in the database, deny access
     if (userResult.rows.length === 0) {
-      // User doesn't exist, add them with default 'worker' role
-      const newUserResult = await pool.query(
-        'INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING *',
-        [profile.emails[0].value, profile.displayName, 'worker']
-      );
-      user = newUserResult.rows[0];
-      profile.role = 'worker';
-    } else {
-      // User exists
-      user = userResult.rows[0];
-      profile.role = user.role;
+      return done(null, false, { message: 'User not authorized' });
     }
+
+    // Get the user from the database
+    const user = userResult.rows[0];
+
+    // Attach role to the profile
+    profile.role = user.role;
     
     return done(null, profile);
   } catch (error) {
@@ -69,25 +66,4 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-// Google OAuth routes
-router.get('/auth/google', 
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-router.get('/auth/google/callback', 
-  passport.authenticate('google', { 
-    failureRedirect: '/login',
-    successRedirect: '/dashboard'
-  })
-);
-
-// Logout route
-router.get('/auth/logout', (req, res) => {
-  req.logout((err) => {
-    if (err) { return next(err); }
-    res.redirect('/login');
-  });
-});
-
-// Export the router
-export default router;
+export default passport;
