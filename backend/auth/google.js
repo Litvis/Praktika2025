@@ -2,7 +2,7 @@ import express from 'express';
 import passport from 'passport';
 import GoogleStrategy from 'passport-google-oauth2';
 import dotenv from 'dotenv';
-import { pool } from '../server.js'; // Assuming you have a db connection file
+import { pool } from '../db.js'; // Assuming you have a db connection file
 
 dotenv.config();
 
