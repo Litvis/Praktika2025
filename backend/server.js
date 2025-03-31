@@ -21,8 +21,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(googleAuthRouter);
-app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Increase limit for larger payloads
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -78,8 +81,6 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-// Function to create users table if it doesn't exist
-// Function to create users table if it doesn't exist
 async function ensureUsersTableExists() {
   try {
     console.log('Checking for users table...');
@@ -121,6 +122,43 @@ async function ensureUsersTableExists() {
     throw error;
   }
 }
+
+// Function to ensure sessions table exists
+async function ensureSessionTableExists() {
+  try {
+    console.log('Checking for sessions table...');
+    const checkTableResult = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        AND table_name = 'sessions'
+      );
+    `);
+    
+    const tableExists = checkTableResult.rows[0].exists;
+    
+    if (!tableExists) {
+      console.log('Creating sessions table...');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS "sessions" (
+          "sid" varchar NOT NULL COLLATE "default",
+          "sess" json NOT NULL,
+          "expire" timestamp(6) NOT NULL,
+          CONSTRAINT "sessions_pkey" PRIMARY KEY ("sid")
+        );
+        CREATE INDEX IF NOT EXISTS "IDX_sessions_expire" ON "sessions" ("expire");
+      `);
+      console.log('Sessions table created successfully');
+    } else {
+      console.log('Sessions table already exists');
+    }
+  } catch (error) {
+    console.error('Error ensuring sessions table exists:', error);
+  }
+}
+
+
+
 // Configure session store
 const PgStore = connectPgSimple(session);
 const sessionStore = new PgStore({
@@ -128,8 +166,7 @@ const sessionStore = new PgStore({
   tableName: 'sessions',
   createTableIfMissing: true
 });
-// Middleware setup
-app.use(cors());
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -143,13 +180,21 @@ app.use(session({
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'lax' // Added to help with cross-site cookie issues
+    sameSite: 'lax'
   }
 }));
 
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
+
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL client:', err);
+});
 
 // Routes
 app.use(googleAuthRouter);
@@ -621,8 +666,8 @@ app.get('/setup-messages', async (req, res) => {
 // Modify server startup
 async function startServer() {
   try {
-    // Ensure tables exist first
-    await ensureTablesExist();
+    await ensureSessionTableExists();
+    await ensureUsersTableExists();
 
     // Set up SendGrid 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
