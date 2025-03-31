@@ -1,7 +1,7 @@
 <template>
     <div class="flex flex-row h-screen bg-gray-50">
       <Sidebar />
-      <div class="w-3/4 flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
+      <div class="w-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
         <!-- Loading State -->
         <div v-if="isLoading" class="flex-grow flex items-center justify-center">
           <div class="inline-block w-8 h-8 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>

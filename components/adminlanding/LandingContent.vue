@@ -1,5 +1,5 @@
 <template>
-  <div class="w-3/4 flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+  <div class="w-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
     <!-- Greeting Header -->
     <div class="p-8">
       <p class="font-bold text-5xl text-gray-800 leading-tight">
