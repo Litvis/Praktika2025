@@ -212,40 +212,35 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
-// Create users table with roles
+// Endpoint to create users table if it doesn't exist
 app.get('/setup-users-table', async (req, res) => {
   try {
-    // Check if users table exists
-    const checkResult = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public'
-        AND table_name = 'users'
+    console.log('Creating users table...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'worker',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
     
-    if (!checkResult.rows[0].exists) {
-      // Create users table if it doesn't exist
-      await pool.query(`
-        CREATE TABLE users (
-          id SERIAL PRIMARY KEY,
-          email VARCHAR(255) UNIQUE NOT NULL,
-          name VARCHAR(255),
-          role VARCHAR(50) DEFAULT 'worker',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      res.status(200).json({ success: true, message: 'Users table created successfully' });
-    } else {
-      res.status(200).json({ success: true, message: 'Users table already exists' });
-    }
+    // Insert some initial admin users if needed
+    await pool.query(`
+      INSERT INTO users (email, name, role) VALUES 
+      ('your-admin-email@example.com', 'Admin User', 'admin')
+      ON CONFLICT (email) DO NOTHING;
+    `);
+    
+    res.status(200).json({ success: true, message: 'Users table created successfully' });
   } catch (error) {
-    console.error('❌ Error creating users table:', error);
+    console.error('Error creating users table:', error);
     res.status(500).json({ error: 'Failed to create users table', details: error.message });
   }
 });
 
+// Add this to your server.js file
 app.get('/api/user/profile', (req, res) => {
   if (req.isAuthenticated()) {
     const userInfo = {
@@ -255,7 +250,7 @@ app.get('/api/user/profile', (req, res) => {
       displayName: req.user.displayName,
       email: req.user.emails?.[0]?.value,
       avatar: req.user.photos?.[0]?.value,
-      role: req.user.role || 'worker' // Default to worker if role is not set
+      role: req.user.role || 'worker'
     };
     
     res.json({ success: true, user: userInfo });

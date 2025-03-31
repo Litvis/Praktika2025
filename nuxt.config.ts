@@ -7,7 +7,7 @@ export default defineNuxtConfig({
       apiBase: process.env.BACKEND_URL || "https://praktika2025.onrender.com", // Make sure this is correct!
     }},
   routeRules: {
-    '/': { redirect: '/irankis' }
+    '/': { redirect: '/login' }
   },
   css: ["@/assets/css/global.css"],
     postcss: {
