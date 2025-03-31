@@ -246,20 +246,58 @@ app.get('/api/dashboard/stats', async (req, res) => {
   }
 });
 
-// Endpoint to get recent emails
+// Endpoint to get recent emails with search
 app.get('/api/emails/recent', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search || '';
     
-    // Get recent emails with pagination
-    const emailsResult = await pool.query(
-      'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages ORDER BY created_at DESC LIMIT $1 OFFSET $2',
-      [limit, offset]
-    );
+    // Construct base query with search
+    let query = `
+      SELECT id, subject, description, created_at, recipient_email, attachments 
+      FROM messages 
+      WHERE 1=1
+    `;
     
-    // Get total count for pagination
-    const countResult = await pool.query('SELECT COUNT(*) FROM messages');
+    const queryParams = [];
+    
+    // Add search condition if search term is provided
+    if (search) {
+      query += ` AND (
+        LOWER(subject) LIKE LOWER($${queryParams.length + 1}) OR 
+        LOWER(description) LIKE LOWER($${queryParams.length + 1}) OR 
+        LOWER(recipient_email) LIKE LOWER($${queryParams.length + 1})
+      )`;
+      queryParams.push(`%${search}%`);
+    }
+    
+    // Add ordering and pagination
+    query += ` ORDER BY created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+    queryParams.push(limit, offset);
+    
+    // Get filtered emails
+    const emailsResult = await pool.query(query, queryParams);
+    
+    // Get total count for filtered results
+    let countQuery = `
+      SELECT COUNT(*) 
+      FROM messages 
+      WHERE 1=1
+    `;
+    
+    const countParams = [];
+    
+    if (search) {
+      countQuery += ` AND (
+        LOWER(subject) LIKE LOWER($${countParams.length + 1}) OR 
+        LOWER(description) LIKE LOWER($${countParams.length + 1}) OR 
+        LOWER(recipient_email) LIKE LOWER($${countParams.length + 1})
+      )`;
+      countParams.push(`%${search}%`);
+    }
+    
+    const countResult = await pool.query(countQuery, countParams);
     const totalCount = parseInt(countResult.rows[0].count);
     
     res.status(200).json({
