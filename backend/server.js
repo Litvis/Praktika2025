@@ -210,7 +210,39 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
-// Add these endpoints to your server.js file
+// Create users table with roles
+app.get('/setup-users-table', async (req, res) => {
+  try {
+    // Check if users table exists
+    const checkResult = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        AND table_name = 'users'
+      );
+    `);
+    
+    if (!checkResult.rows[0].exists) {
+      // Create users table if it doesn't exist
+      await pool.query(`
+        CREATE TABLE users (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          name VARCHAR(255),
+          role VARCHAR(50) DEFAULT 'worker',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      res.status(200).json({ success: true, message: 'Users table created successfully' });
+    } else {
+      res.status(200).json({ success: true, message: 'Users table already exists' });
+    }
+  } catch (error) {
+    console.error('❌ Error creating users table:', error);
+    res.status(500).json({ error: 'Failed to create users table', details: error.message });
+  }
+});
 
 // Endpoint to get dashboard stats
 app.get('/api/dashboard/stats', async (req, res) => {
