@@ -78,49 +78,6 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-// Function to create users table if it doesn't exist
-// Function to create users table if it doesn't exist
-async function ensureUsersTableExists() {
-  try {
-    console.log('Checking for users table...');
-    const checkTableResult = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public'
-        AND table_name = 'users'
-      );
-    `);
-    
-    const tableExists = checkTableResult.rows[0].exists;
-    
-    if (!tableExists) {
-      console.log('Creating users table...');
-      await pool.query(`
-        CREATE TABLE users (
-          id SERIAL PRIMARY KEY,
-          email VARCHAR(255) UNIQUE NOT NULL,
-          name VARCHAR(255),
-          role VARCHAR(50) DEFAULT 'worker',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      // Insert some initial admin users if needed
-      await pool.query(`
-        INSERT INTO users (email, name, role) VALUES 
-        ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
-        ON CONFLICT (email) DO NOTHING;
-      `);
-      
-      console.log('Users table created successfully');
-    } else {
-      console.log('Users table already exists');
-    }
-  } catch (error) {
-    console.error('Error ensuring users table exists:', error);
-    throw error;
-  }
-}
 // Configure session store
 const PgStore = connectPgSimple(session);
 const sessionStore = new PgStore({
