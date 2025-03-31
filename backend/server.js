@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import googleAuthRouter from './auth/google.js';
+import authRoutes from './routes/OAuth.js';
 
 dotenv.config();
 
@@ -122,68 +123,69 @@ async function ensureUsersTableExists() {
   }
 }
 
-// Function to ensure sessions table exists
-async function ensureSessionTableExists() {
+const sessionStore = new PgStore({
+  pool: pool,
+  tableName: 'sessions',
+  createTableIfMissing: true
+});
+
+// Middleware setup
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Session middleware BEFORE Passport
+app.use(session({
+  store: sessionStore,
+  secret: process.env.SESSION_SECRET || 'your_fallback_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax' // Added to help with cross-site cookie issues
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Routes
+app.use(googleAuthRouter);
+app.use(authRoutes);
+
+async function ensureTablesExist() {
   try {
-    console.log('Checking for sessions table...');
-    const checkTableResult = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public'
-        AND table_name = 'sessions'
+    // Ensure users table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'worker',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    
-    const tableExists = checkTableResult.rows[0].exists;
-    
-    if (!tableExists) {
-      console.log('Creating sessions table...');
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS "sessions" (
-          "sid" varchar NOT NULL COLLATE "default",
-          "sess" json NOT NULL,
-          "expire" timestamp(6) NOT NULL,
-          CONSTRAINT "sessions_pkey" PRIMARY KEY ("sid")
-        );
-        CREATE INDEX IF NOT EXISTS "IDX_sessions_expire" ON "sessions" ("expire");
-      `);
-      console.log('Sessions table created successfully');
-    } else {
-      console.log('Sessions table already exists');
-    }
+
+    // Ensure sessions table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "sessions" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "sessions_pkey" PRIMARY KEY ("sid")
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_sessions_expire" ON "sessions" ("expire");
+    `);
+
+    console.log('Tables ensured');
   } catch (error) {
-    console.error('Error ensuring sessions table exists:', error);
+    console.error('Error ensuring tables exist:', error);
+    throw error;
   }
 }
-
-// Initialize PostgreSQL session store
-const PgStore = pgSession(session);
-
-// Ensure sessions table exists before setting up session middleware
-ensureSessionTableExists().then(() => {
-  // Set up session middleware with PostgreSQL store
-  app.use(session({
-    store: new PgStore({
-      pool: pool,
-      tableName: 'sessions',
-      createTableIfMissing: true, // Belt and suspenders approach
-    }),
-    secret: process.env.SESSION_SECRET || 'your_fallback_secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      secure: process.env.NODE_ENV === 'production'
-    }
-  }));
-
-  // Initialize passport
-  app.use(passport.initialize());
-  app.use(passport.session());
-  app.use(authRoutes);
-}).catch(err => {
-  console.error('Failed to initialize session store:', err);
-});
 
 // Add middleware to ensure sessions table exists before processing auth routes
 app.use('/auth/*', async (req, res, next) => {
@@ -617,14 +619,14 @@ app.get('/setup-messages', async (req, res) => {
   }
 });
 
-// Modify your existing server startup logic
+// Modify server startup
 async function startServer() {
   try {
-    // Ensure users table exists before starting the server
-    await ensureUsersTableExists();
+    // Ensure tables exist first
+    await ensureTablesExist();
 
-    // Your existing session table check and server startup code
-    await ensureSessionTableExists();
+    // Set up SendGrid 
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
     const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => {
@@ -636,5 +638,8 @@ async function startServer() {
   }
 }
 
-// Call the startServer function instead of direct app.listen
+// Start the server
 startServer();
+
+// Export pool for other parts of the application
+export { pool };

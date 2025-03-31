@@ -9,6 +9,34 @@ dotenv.config();
 // Create the router
 const router = express.Router();
 
+// Configure Passport serialization
+passport.serializeUser((user, done) => {
+  // Serialize just the essential user information
+  done(null, {
+    email: user.emails[0].value,
+    role: user.role
+  });
+});
+
+passport.deserializeUser(async (userData, done) => {
+  try {
+    // Fetch the full user from the database
+    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [userData.email]);
+    
+    if (userResult.rows.length > 0) {
+      done(null, {
+        ...userResult.rows[0],
+        emails: [{ value: userData.email }],
+        role: userData.role
+      });
+    } else {
+      done(new Error('User not found'));
+    }
+  } catch (error) {
+    done(error);
+  }
+});
+
 // Configure the Google Strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
@@ -19,18 +47,19 @@ passport.use(new GoogleStrategy({
     // Check if user exists in our database
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [profile.emails[0].value]);
     
+    let user;
     if (userResult.rows.length === 0) {
       // User doesn't exist, add them with default 'worker' role
-      const newUser = await pool.query(
+      const newUserResult = await pool.query(
         'INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING *',
         [profile.emails[0].value, profile.displayName, 'worker']
       );
-      
-      // Add role to profile
+      user = newUserResult.rows[0];
       profile.role = 'worker';
     } else {
-      // User exists, get their role
-      profile.role = userResult.rows[0].role;
+      // User exists
+      user = userResult.rows[0];
+      profile.role = user.role;
     }
     
     return done(null, profile);
@@ -46,29 +75,18 @@ router.get('/auth/google',
 );
 
 router.get('/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  async (req, res) => {
-    try {
-      // Redirect based on role
-      if (req.user.role === 'admin') {
-        res.redirect('/adminLanding');
-      } else {
-        res.redirect('/dashboard');
-      }
-    } catch (error) {
-      console.error('Error in redirect:', error);
-      res.redirect('/login?error=auth_error');
-    }
-  }
+  passport.authenticate('google', { 
+    failureRedirect: '/login',
+    successRedirect: '/dashboard'
+  })
 );
 
-// Serialize/Deserialize user
-passport.serializeUser((user, done) => {
-  done(null, user);
-});
-
-passport.deserializeUser((user, done) => {
-  done(null, user);
+// Logout route
+router.get('/auth/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) { return next(err); }
+    res.redirect('/login');
+  });
 });
 
 // Export the router
