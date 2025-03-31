@@ -1,7 +1,11 @@
+import express from 'express'; // NEW: Add this import
 import passport from 'passport';
 import GoogleStrategy from 'passport-google-oauth2';
 import dotenv from 'dotenv';
 import { pool } from '../db.js';
+
+// NEW: Create an Express router
+const router = express.Router();
 
 dotenv.config();
 
@@ -66,4 +70,17 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-export default passport;
+// NEW: Add Google OAuth routes to the router
+router.get('/auth/google', 
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+router.get('/auth/google/callback', 
+  passport.authenticate('google', { 
+    failureRedirect: '/login',
+    successRedirect: 'https://praktika2025.vercel.app/irankis'
+  })
+);
+
+// NEW: Export the router instead of passport
+export default router;

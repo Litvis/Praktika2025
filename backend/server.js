@@ -192,17 +192,6 @@ app.use('/auth/*', async (req, res, next) => {
   }
 });
 
-// Add middleware to ensure sessions table exists before processing auth routes
-app.use('/auth/*', async (req, res, next) => {
-  try {
-    await ensureSessionTableExists();
-    next();
-  } catch (err) {
-    console.error('Error checking sessions table before auth:', err);
-    next(err);
-  }
-});
-
 // Handle JSON payload emails (with base64 attachments)
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
