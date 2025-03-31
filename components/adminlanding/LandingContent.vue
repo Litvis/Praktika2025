@@ -26,7 +26,7 @@
                 <h3 class="font-semibold text-lg text-gray-800">Išsiųsta</h3>
               </div>
               <p class="font-bold text-3xl text-gray-800">{{ dashboardStats.totalEmails || 0 }}</p>
-              <p class="text-gray-500 text-sm mt-1">laiškų viso</p>
+              <p class="text-gray-500 text-sm mt-1">laiškai</p>
             </div>
             <div class="h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
           </div>
@@ -79,7 +79,7 @@
               <div v-if="dashboardStats.lastEmail" class="bg-gray-50 border border-gray-100 rounded-lg p-4 min-h-40 mb-4">
                 <div class="flex justify-between mb-3">
                   <div>
-                    <p class="text-sm text-gray-500">Į: {{ dashboardStats.lastEmail.recipient_email }}</p>
+                    <p class="text-sm text-gray-500">Kam: {{ dashboardStats.lastEmail.recipient_email }}</p>
                     <p class="font-medium">{{ dashboardStats.lastEmail.subject }}</p>
                   </div>
                   <div class="text-right text-gray-500 text-sm">
@@ -219,7 +219,7 @@ const viewEmail = (emailId) => {
 
 // View email list
 const viewEmailList = () => {
-  router.push('/emails');
+  router.push('/dashboard');
 };
 
 // Fetch data when component mounts
