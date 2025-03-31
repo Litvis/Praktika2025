@@ -79,6 +79,7 @@ pool.query('SELECT NOW()', (err, res) => {
 });
 
 // Function to create users table if it doesn't exist
+// Function to create users table if it doesn't exist
 async function ensureUsersTableExists() {
   try {
     console.log('Checking for users table...');
