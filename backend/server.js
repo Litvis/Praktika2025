@@ -12,6 +12,7 @@ import multer from 'multer'; // For handling multipart/form-data (file uploads)
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import googleAuthRouter from './auth/google.js';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.use(googleAuthRouter);
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Increase limit for larger payloads
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -241,6 +243,24 @@ app.get('/setup-users-table', async (req, res) => {
   } catch (error) {
     console.error('❌ Error creating users table:', error);
     res.status(500).json({ error: 'Failed to create users table', details: error.message });
+  }
+});
+
+app.get('/api/user/profile', (req, res) => {
+  if (req.isAuthenticated()) {
+    const userInfo = {
+      id: req.user.id,
+      firstName: req.user.name?.givenName,
+      lastName: req.user.name?.familyName,
+      displayName: req.user.displayName,
+      email: req.user.emails?.[0]?.value,
+      avatar: req.user.photos?.[0]?.value,
+      role: req.user.role || 'worker' // Default to worker if role is not set
+    };
+    
+    res.json({ success: true, user: userInfo });
+  } else {
+    res.status(401).json({ success: false, error: 'Not authenticated' });
   }
 });
 
