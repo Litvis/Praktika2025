@@ -12,8 +12,8 @@ const routes = [
   },
   {
     path: '/emails/:id',
-    name: 'EmailDetail',
-    component: EmailDetail,
+    name: 'EmailDetailView',
+    component: () => import('~/components/adminlanding/emailDetailView.vue'),
     props: true
   }
 ];
