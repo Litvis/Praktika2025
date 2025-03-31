@@ -1,14 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
-// Import your components
-import EmailList from '~/components/adminlanding/emailList.vue';
-import EmailDetail from '~/components/adminlanding/emailDetail.vue';
-
 const routes = [
   {
     path: '/emails',
     name: 'EmailList',
-    component: EmailList
+    component: () => import('~/components/adminlanding/emailList.vue')
   },
   {
     path: '/emails/:id',
