@@ -277,13 +277,18 @@
   };
   
   const viewEmail = (id) => {
-  console.log('Attempting to view email with ID:', id);
-  router.push({ 
-    name: 'EmailDetailView', 
-    params: { id: String(id) } 
-  }).catch(err => {
-    console.error('Navigation error:', err);
-  });
+  console.log('Viewing email with ID:', id);
+  console.log('Router object:', router);
+  
+  try {
+    router.push({ 
+      name: 'EmailDetailView', 
+      params: { id: String(id) } 
+    });
+  } catch (error) {
+    console.error('Navigation error:', error);
+    alert(`Failed to navigate: ${error.message}`);
+  }
 };
   
   // Export emails as CSV
