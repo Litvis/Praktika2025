@@ -276,10 +276,10 @@
     fetchEmails();
   };
   
-  // View email details
-  const viewEmail = (id) => {
-    router.push(`/emails/${id}`);
-  };
+// In the viewEmail method
+const viewEmail = (id) => {
+  router.push({ name: 'EmailDetail', params: { id } });
+};
   
   // Export emails as CSV
   const exportEmails = async () => {
