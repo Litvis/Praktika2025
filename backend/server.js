@@ -20,14 +20,58 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Create Express app FIRST
 const app = express();
+
+// Set up PostgreSQL connection pool
+const { Pool } = pkg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 10, // Maximum connections in pool
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
+
+// Configure session store
+const PgStore = connectPgSimple(session);
+const sessionStore = new PgStore({
+  pool: pool,
+  tableName: 'sessions',
+  createTableIfMissing: true
+});
+
+// CORS configuration
 app.use(cors({
   origin: true,
   credentials: true
 }));
-app.use(googleAuthRouter);
-app.use(express.json({ limit: '50mb' })); // Increase limit for larger payloads
+
+// JSON and URL-encoded body parsing
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Session middleware BEFORE Passport
+app.use(session({
+  store: sessionStore,
+  secret: process.env.SESSION_SECRET || 'your_fallback_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax'
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Routes
+app.use(googleAuthRouter);
+app.use(authRoutes);
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -41,7 +85,6 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
-    // Create unique filename using timestamp and original name
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
@@ -56,31 +99,12 @@ const upload = multer({
 // Set up SendGrid API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// Set up PostgreSQL connection pool instead of a single client
-const { Pool } = pkg;
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 10, // Maximum connections in pool
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
-
 // Add error handling for the pool
 pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client:', err);
-  // Don't crash the server on connection errors
 });
 
-// Test database connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('Database connection error:', err);
-  } else {
-    console.log('PostgreSQL connected successfully at:', res.rows[0].now);
-  }
-});
-
+// Function to ensure users table exists
 async function ensureUsersTableExists() {
   try {
     console.log('Checking for users table...');
@@ -157,48 +181,16 @@ async function ensureSessionTableExists() {
   }
 }
 
-
-
-// Configure session store
-const PgStore = connectPgSimple(session);
-const sessionStore = new PgStore({
-  pool: pool,
-  tableName: 'sessions',
-  createTableIfMissing: true
-});
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Session middleware BEFORE Passport
-app.use(session({
-  store: sessionStore,
-  secret: process.env.SESSION_SECRET || 'your_fallback_secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax'
+// Add middleware to ensure sessions table exists before processing auth routes
+app.use('/auth/*', async (req, res, next) => {
+  try {
+    await ensureSessionTableExists();
+    next();
+  } catch (err) {
+    console.error('Error checking sessions table before auth:', err);
+    next(err);
   }
-}));
-
-// Initialize Passport
-app.use(passport.initialize());
-app.use(passport.session());
-
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle PostgreSQL client:', err);
 });
-
-// Routes
-app.use(googleAuthRouter);
-app.use(authRoutes);
 
 async function ensureTablesExist() {
   try {
@@ -663,9 +655,9 @@ app.get('/setup-messages', async (req, res) => {
   }
 });
 
-// Modify server startup
 async function startServer() {
   try {
+    // Ensure tables exist first
     await ensureSessionTableExists();
     await ensureUsersTableExists();
 
@@ -685,5 +677,5 @@ async function startServer() {
 // Start the server
 startServer();
 
-// Export pool for other parts of the application
-export { pool };
+// Export pool and app for other parts of the application
+export { pool, app };
