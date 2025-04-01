@@ -1,13 +1,29 @@
+// plugins/pinia.js
+import { createPinia } from 'pinia'
+
+export default defineNuxtPlugin((nuxtApp) => {
+  const pinia = createPinia()
+  nuxtApp.vueApp.use(pinia)
+  
+  // Optional: Add any global store configurations here
+  return {
+    provide: {
+      pinia
+    }
+  }
+})
+
+// stores/user.js (Updated)
 import { defineStore } from 'pinia'
 
 export const useUserStore = defineStore('user', () => {
-  // Use ref() for reactive state
+  // Reactive state using Composition API
   const user = ref(null)
   const isAdmin = ref(false)
   const isAuthenticated = ref(false)
   const isLoading = ref(true)
 
-  // Methods using the Composition API style
+  // Actions using methods
   function setUser(userData) {
     user.value = userData
     isAdmin.value = userData?.role === 'admin'
@@ -44,6 +60,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // Return the reactive state and methods
   return {
     user,
     isAdmin,
@@ -54,3 +71,16 @@ export const useUserStore = defineStore('user', () => {
     fetchUserProfile
   }
 })
+
+// composables/useUser.js (Optional helper)
+export const useUser = () => {
+  const userStore = useUserStore()
+  
+  // Optional: Add any additional helper methods or computeds
+  const isLoggedIn = computed(() => userStore.isAuthenticated)
+  
+  return {
+    ...userStore,
+    isLoggedIn
+  }
+}

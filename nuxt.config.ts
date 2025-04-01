@@ -16,6 +16,9 @@ export default defineNuxtConfig({
         autoprefixer: {},
       },
     }, 
+    modules: [
+      '@pinia/nuxt',
+    ],
     router: {
       options: {
         linkActiveClass: 'active',

@@ -1,5 +1,5 @@
 <template>
-<div class="bg-white border-r border-gray-200 h-screen flex flex-col shadow-sm fixed">
+<div class="bg-white border-r border-gray-200 h-screen flex flex-col shadow-sm">
       <!-- Logo Section -->
       <div class="p-6 flex justify-center border-b border-gray-100">
         <div class="max-w-32">
