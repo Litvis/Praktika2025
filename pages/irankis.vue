@@ -76,7 +76,8 @@
                     @click="sendEmail" 
                     class="w-full md:w-48 p-2 md:p-4 rounded-xl bg-green-700 text-white font-bold text-sm md:text-xl"
                   >
-                    Siųsti
+                    Belekas
+                    
                   </button>
                 </div>
               </div>
