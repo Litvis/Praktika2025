@@ -17,37 +17,48 @@ export default defineNuxtRouteMiddleware((to, from) => {
   });
   
   // If still loading, don't make navigation decisions yet
+  // But show a loading state or redirect to a loading page
   if (userStore.isLoading) {
     console.log('Still loading user data, deferring navigation check');
-    // You might want to show a loading indicator here
+    // You could redirect to a loading page here if needed
     return;
   }
   
-  // If user is not authenticated, redirect to login
+  // IMPORTANT: If user is not authenticated, always redirect to login
   if (!userStore.isAuthenticated) {
     console.log('User not authenticated, redirecting to login');
     return navigateTo('/login');
   }
   
-  // List of paths that require admin access
+  // List ALL admin-only paths - be comprehensive
   const adminOnlyPaths = [
     '/dashboard',
     '/admin',
     '/admin/dashboard',
-    '/emails'
+    '/emails',
+    '/adminLanding', // Added this path
+    '/admin/users',
+    '/admin/settings'
   ];
   
-  // Check if current path is admin-only
-  const isAdminPath = adminOnlyPaths.some(path => to.path.startsWith(path));
-  
-  // Also check for email detail pages that follow pattern /emails/123
-  const isEmailDetailPage = /^\/emails\/\d+$/.test(to.path);
-  
-  // If this is an admin path and user is not admin, redirect to unauthorized
-  if ((isAdminPath || isEmailDetailPage) && !userStore.isAdmin) {
-    console.log('Non-admin attempting to access admin path, redirecting to unauthorized');
+  // Check for EXACT path matches first
+  if (adminOnlyPaths.includes(to.path) && !userStore.isAdmin) {
+    console.log(`Non-admin attempting to access admin path: ${to.path}`);
     return navigateTo('/unauthorized');
   }
   
+  // Then check for path patterns
+  const isAdminPath = adminOnlyPaths.some(path => to.path.startsWith(path));
+  const isEmailDetailPage = /^\/emails\/\d+$/.test(to.path);
+  const isAdminRoute = isAdminPath || isEmailDetailPage;
+  
+  // If this is an admin path and user is not admin, ALWAYS redirect to unauthorized
+  if (isAdminRoute && !userStore.isAdmin) {
+    console.log(`Non-admin attempting to access admin path pattern: ${to.path}`);
+    return navigateTo('/unauthorized');
+  }
+  
+  // Allow navigation for authenticated users to non-admin pages
+  // Or for admin users to any page
   console.log('Auth check passed, allowing navigation');
 });

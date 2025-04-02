@@ -1,6 +1,5 @@
-// router/index.js
+// If using Vue Router directly, in your router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
-import { useUserStore } from '../../stores/user';
 
 const routes = [
   {
@@ -19,13 +18,13 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../pages/Dashboard.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresAdmin: true } // Add requiresAdmin: true 
   },
   {
     path: '/emails/:id',
     name: 'EmailDetail',
     component: () => import('../pages/EmailDetail.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresAdmin: true } // Add requiresAdmin: true
   },
   {
     path: '/irankis',
@@ -42,7 +41,10 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  // Disable component caching to prevent security issues when switching routes
+  sensitive: true, // Case sensitive routes
+  strict: true // Strict path matching
 });
 
 // Global navigation guard
