@@ -122,19 +122,31 @@ const message = ref('');
 // Add state for attachments
 const attachedFiles = ref([]);
 
-// Check authentication and user role
+// In your irankis.vue
+console.log("Config:", useRuntimeConfig().public);
+
 onMounted(async () => {
-  // If user is not loaded, fetch user data
-  if (!userStore.user && !userStore.isLoading) {
-    await userStore.fetchUserProfile();
+  console.log("Initial state:", {
+    isLoading: userStore.isLoading,
+    user: userStore.user,
+    isAuthenticated: userStore.isAuthenticated
+  });
+  
+  // Force a fresh fetch regardless of cache
+  try {
+    const result = await userStore.fetchUserProfile();
+    console.log("Fetch result:", result);
+    console.log("After fetch:", {
+      isLoading: userStore.isLoading,
+      user: userStore.user,
+      isAuthenticated: userStore.isAuthenticated
+    });
+  } catch (e) {
+    console.error("Fetch error:", e);
+    // Force loading to false as a failsafe
+    userStore.isLoading = false;
   }
 });
-
-// Update handlers for email, subject, and message
-const updateRecipient = (newRecipient) => {
-  recipient.value = newRecipient;
-  recipientsList.value = [newRecipient];
-};
 
 const updateEmails = (newEmails) => {
   if (newEmails.length === 1 && newEmails[0]) {

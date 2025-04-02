@@ -22,6 +22,7 @@ export const useUserStore = defineStore('user', () => {
     user.value = null;
     isAdmin.value = false;
     isAuthenticated.value = false;
+    isLoading.value = false;
     lastCheck.value = Date.now();
   }
 
@@ -36,7 +37,12 @@ export const useUserStore = defineStore('user', () => {
       isLoading.value = true;
       const config = useRuntimeConfig();
       const response = await $fetch(`${config.public.apiBase}/api/user/profile`, {
-        credentials: 'include'
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
       if (response.success) {
