@@ -6,8 +6,11 @@
     </div>
 
     <template v-else>
-      <Sidebar class="md:w-1/5 lg:w-1/6" />
-      <div class="p-4 w-full ml-64">
+      <!-- Show Sidebar only for admin users -->
+      <Sidebar v-if="userStore.isAdmin" class="md:w-1/5 lg:w-1/6" />
+      
+      <!-- Content area - adjust margin only when sidebar is visible -->
+      <div class="p-4 w-full" :class="{ 'ml-64': userStore.isAdmin }">
         <div>
           <!-- User role indicator -->
           <div class="mb-4">

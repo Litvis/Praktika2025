@@ -4,8 +4,9 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   runtimeConfig: {
     public: {
-      apiBase: process.env.BACKEND_URL || "https://praktika2025.onrender.com", // Make sure this is correct!
-    }},
+      apiBase: process.env.API_BASE_URL || 'https://praktika2025.onrender.com'
+    }
+  },
   routeRules: {
     '/': { redirect: '/login' }
   },
@@ -31,4 +32,10 @@ export default defineNuxtConfig({
         pathPrefix: false,
       },
     ],
+    plugins: [
+      '~/plugins/pinia.js'
+    ],
+    router: {
+      middleware: ['auth']
+    },
 })
