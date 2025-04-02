@@ -94,7 +94,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useUserStore } from '~/backend/stores/user.js';
+import { useUserStore } from '~/stores/user.js';
 import Sidebar from '~/components/adminlanding/Sidebar.vue';
 import NavigationButtons from '~/components/irankis/NavigationButtons.vue';
 import EmailInput from '~/components/irankis/EmailInput.vue';

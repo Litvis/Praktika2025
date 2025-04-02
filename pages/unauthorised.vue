@@ -36,7 +36,7 @@
   </template>
   
   <script setup>
-  import { useUserStore } from '~/backend/stores/user.js';
+  import { useUserStore } from '~/stores/user.js';
   import { useRouter } from 'vue-router';
   
   const userStore = useUserStore();
