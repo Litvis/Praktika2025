@@ -78,9 +78,45 @@
   import { ref, computed } from 'vue';
   import Sidebar from '~/components/adminlanding/Sidebar.vue';
   
-  // Get the route parameter
-  const route = useRoute();
-  const router = useRouter();
+// pages/adminLanding.vue, dashboard.vue, and any other admin pages
+// Add this at the top of your <script setup> section:
+
+import { useUserStore } from '~/stores/user';
+import { onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
+
+const userStore = useUserStore();
+const router = useRouter();
+
+// This will run on component mount
+onMounted(() => {
+  checkAdminAccess();
+});
+
+// This will run whenever the isAdmin state changes
+watch(() => userStore.isAdmin, () => {
+  checkAdminAccess();
+});
+
+// This will run whenever the isLoading state changes
+watch(() => userStore.isLoading, () => {
+  if (!userStore.isLoading) {
+    checkAdminAccess();
+  }
+});
+
+function checkAdminAccess() {
+  console.log('Checking admin access in component', {
+    isLoading: userStore.isLoading,
+    isAdmin: userStore.isAdmin
+  });
+  
+  // If not loading and not admin, redirect immediately
+  if (!userStore.isLoading && !userStore.isAdmin) {
+    console.log('Access denied - not an admin');
+    router.push('/unauthorized');
+  }
+}
   
   // Reactive state
   const email = ref(null);
