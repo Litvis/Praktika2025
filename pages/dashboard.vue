@@ -159,15 +159,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '~/components/adminlanding/Sidebar.vue';
-// pages/adminLanding.vue, dashboard.vue, and any other admin pages
-// Add this at the top of your <script setup> section:
-
 import { useUserStore } from '~/stores/user';
-import { onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { onMounted, watch, ref, computed } from 'vue';
 
 const userStore = useUserStore();
 const router = useRouter();
