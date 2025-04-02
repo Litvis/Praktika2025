@@ -32,8 +32,4 @@ export default defineNuxtConfig({
         pathPrefix: false,
       },
     ],
-    plugins: [
-      '~/backend/plugins/pinia.js'
-    ],
-
 })
