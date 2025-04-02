@@ -61,7 +61,7 @@ passport.deserializeUser(async (userData, done) => {
   }
 });
 
-// Configure the Google Strategy
+// In your google.js file
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -74,19 +74,49 @@ passport.use(new GoogleStrategy({
       return done(null, false, { message: 'Invalid profile information' });
     }
 
+    const userEmail = profile.emails[0].value;
+    console.log(`OAuth login attempt with email: ${userEmail}`);
+
     // Check if user exists in our database
     const userResult = await pool.query(
       'SELECT * FROM users WHERE email = $1', 
-      [profile.emails[0].value]
+      [userEmail]
     );
     
-    // If user doesn't exist in the database, deny access
     if (userResult.rows.length === 0) {
-      return done(null, false, { message: 'User not authorized' });
+      // User doesn't exist - CREATE NEW USER
+      console.log(`Creating new user for email: ${userEmail}`);
+      const displayName = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
+      
+      const newUserResult = await pool.query(
+        'INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING *',
+        [userEmail, displayName, 'worker'] // New users get worker role by default
+      );
+      
+      if (newUserResult.rows.length === 0) {
+        return done(null, false, { message: 'Failed to create user' });
+      }
+      
+      const newUser = newUserResult.rows[0];
+      
+      // Create a normalized user object
+      const normalizedUser = {
+        id: newUser.id,
+        emails: profile.emails,
+        name: {
+          givenName: profile.name?.givenName || '',
+          familyName: profile.name?.familyName || ''
+        },
+        displayName: displayName,
+        role: newUser.role || 'worker'
+      };
+      
+      return done(null, normalizedUser);
     }
 
-    // Get the user from the database
+    // Get the existing user from the database
     const user = userResult.rows[0];
+    console.log(`Found existing user: ${user.name} with role: ${user.role}`);
 
     // Create a normalized user object
     const normalizedUser = {
@@ -96,7 +126,7 @@ passport.use(new GoogleStrategy({
         givenName: profile.name?.givenName || '',
         familyName: profile.name?.familyName || ''
       },
-      displayName: profile.displayName,
+      displayName: user.name || profile.displayName,
       role: user.role || 'worker'
     };
     

@@ -82,6 +82,7 @@
                     Belekas
                     
                   </button>
+                  
                 </div>
               </div>
             </div>
@@ -131,6 +132,27 @@ onMounted(async () => {
     user: userStore.user,
     isAuthenticated: userStore.isAuthenticated
   });
+
+  const forceLogout = () => {
+  // Clear all cookies
+  document.cookie.split(";").forEach(function(c) {
+    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+  });
+  
+  // Clear local storage
+  localStorage.clear();
+  
+  // Clear session storage
+  sessionStorage.clear();
+  
+  // Redirect to Google logout URL and then to your login page
+  window.location.href = "https://accounts.google.com/logout";
+  
+  // You could also add a timeout to redirect to your login page
+  setTimeout(() => {
+    window.location.href = "/login";
+  }, 1000);
+};
   
   // Force a fresh fetch regardless of cache
   try {
