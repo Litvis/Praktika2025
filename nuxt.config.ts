@@ -33,9 +33,7 @@ export default defineNuxtConfig({
       },
     ],
     plugins: [
-      '~/plugins/pinia.js'
+      '~/backend/plugins/pinia.js'
     ],
-    router: {
-      middleware: ['auth']
-    },
+
 })
