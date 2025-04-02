@@ -8,21 +8,25 @@ export const useUserStore = defineStore('user', () => {
   const isAuthenticated = ref(false);
   const isLoading = ref(true);
   const lastCheck = ref(0);
+  const error = ref(null);
 
   // Actions
   function setUser(userData) {
+    console.log('Setting user data:', userData);
     user.value = userData;
     isAdmin.value = userData?.role === 'admin';
     isAuthenticated.value = true;
     isLoading.value = false;
     lastCheck.value = Date.now();
+    error.value = null;
   }
 
   function clearUser() {
+    console.log('Clearing user data');
     user.value = null;
     isAdmin.value = false;
     isAuthenticated.value = false;
-    isLoading.value = false;
+    isLoading.value = false; // Make sure to set loading to false
     lastCheck.value = Date.now();
   }
 
@@ -31,29 +35,41 @@ export const useUserStore = defineStore('user', () => {
       // Avoid frequent refetching (cache for 5 minutes)
       const cacheTime = 5 * 60 * 1000; // 5 minutes
       if (Date.now() - lastCheck.value < cacheTime && user.value) {
+        console.log('Using cached user profile');
         return user.value;
       }
 
+      console.log('Fetching user profile from API');
       isLoading.value = true;
+      error.value = null;
+      
       const config = useRuntimeConfig();
-      const response = await $fetch(`${config.public.apiBase}/api/user/profile`, {
+      const apiUrl = `${config.public.apiBase}/api/user/profile`;
+      
+      console.log('API URL:', apiUrl);
+      
+      const response = await $fetch(apiUrl, {
         method: 'GET',
-        mode: 'cors',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Accept': 'application/json'
         }
       });
       
+      console.log('API response:', response);
+      
       if (response.success) {
+        console.log('User profile fetched successfully:', response.user);
         setUser(response.user);
         return response.user;
+      } else {
+        console.log('User profile fetch unsuccessful');
+        clearUser();
+        return null;
       }
-      
-      clearUser();
-      return null;
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      error.value = err.message || 'Failed to fetch user profile';
       clearUser();
       return null;
     } finally {
@@ -63,17 +79,26 @@ export const useUserStore = defineStore('user', () => {
 
   async function logout() {
     try {
+      console.log('Logging out user');
       const config = useRuntimeConfig();
-      await $fetch(`${config.public.apiBase}/logout`, {
-        credentials: 'include'
-      });
+      
+      // Redirect to the backend logout endpoint instead of fetching it
+      window.location.href = `${config.public.apiBase}/logout`;
+      
       clearUser();
       return true;
-    } catch (error) {
-      console.error('Error during logout:', error);
+    } catch (err) {
+      console.error('Error during logout:', err);
+      error.value = err.message || 'Failed to logout';
       return false;
     }
   }
+
+  // Check for authentication immediately
+  onMounted(() => {
+    console.log('User store mounted, checking authentication');
+    fetchUserProfile();
+  });
 
   // Return the reactive state and actions
   return {
@@ -81,6 +106,7 @@ export const useUserStore = defineStore('user', () => {
     isAdmin,
     isAuthenticated,
     isLoading,
+    error,
     setUser,
     clearUser,
     fetchUserProfile,

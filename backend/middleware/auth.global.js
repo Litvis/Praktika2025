@@ -1,31 +1,53 @@
-// middleware/auth.js
+// middleware/auth.global.js
 export default defineNuxtRouteMiddleware((to, from) => {
-    const userStore = useUserStore();
-    
-    // Skip middleware if we're going to login page
-    if (to.path === '/login') {
-      return;
-    }
-    
-    // Wait for user data to load if it's not already loaded
-    if (userStore.isLoading) {
-      return;
-    }
-    
-    // If user is not authenticated, redirect to login
-    if (!userStore.isAuthenticated) {
-      return navigateTo('/login');
-    }
-    
-    // Check admin-only routes
-    const adminOnlyRoutes = ['/dashboard', '/admin', '/admin/dashboard', '/emails', '/emails/'];
-    
-    // Check if the current route is an admin route or matches the pattern /emails/{id}
-    const isEmailDetailPage = to.path.match(/^\/emails\/\d+$/);
-    const isAdminRoute = adminOnlyRoutes.some(route => to.path.startsWith(route)) || isEmailDetailPage;
-    
-    // If this is an admin route and user is not admin, redirect to unauthorized
-    if (isAdminRoute && !userStore.isAdmin) {
-      return navigateTo('/unauthorized');
-    }
+  const userStore = useUserStore();
+  
+  // Skip middleware for login and unauthorized pages
+  if (to.path === '/login' || to.path === '/unauthorized') {
+    console.log('Skipping auth check for login/unauthorized page');
+    return;
+  }
+  
+  console.log('Auth middleware running for path:', to.path);
+  console.log('Auth state:', {
+    isLoading: userStore.isLoading,
+    isAuthenticated: userStore.isAuthenticated,
+    isAdmin: userStore.isAdmin,
+    user: userStore.user
   });
+  
+  // If still loading, don't make navigation decisions yet
+  if (userStore.isLoading) {
+    console.log('Still loading user data, deferring navigation check');
+    // You might want to show a loading indicator here
+    return;
+  }
+  
+  // If user is not authenticated, redirect to login
+  if (!userStore.isAuthenticated) {
+    console.log('User not authenticated, redirecting to login');
+    return navigateTo('/login');
+  }
+  
+  // List of paths that require admin access
+  const adminOnlyPaths = [
+    '/dashboard',
+    '/admin',
+    '/admin/dashboard',
+    '/emails'
+  ];
+  
+  // Check if current path is admin-only
+  const isAdminPath = adminOnlyPaths.some(path => to.path.startsWith(path));
+  
+  // Also check for email detail pages that follow pattern /emails/123
+  const isEmailDetailPage = /^\/emails\/\d+$/.test(to.path);
+  
+  // If this is an admin path and user is not admin, redirect to unauthorized
+  if ((isAdminPath || isEmailDetailPage) && !userStore.isAdmin) {
+    console.log('Non-admin attempting to access admin path, redirecting to unauthorized');
+    return navigateTo('/unauthorized');
+  }
+  
+  console.log('Auth check passed, allowing navigation');
+});

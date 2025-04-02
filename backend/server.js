@@ -41,17 +41,20 @@ const sessionStore = new PgStore({
   createTableIfMissing: true
 });
 
-// CORS configuration
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: ['https://praktika2025.vercel.app', 'http://localhost:3000'], // Add your frontend URLs
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 
 // JSON and URL-encoded body parsing
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Session middleware BEFORE Passport
+app.set('trust proxy', 1);
+
 app.use(session({
   store: sessionStore,
   secret: process.env.SESSION_SECRET || 'your_fallback_secret',
@@ -59,9 +62,9 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    secure: process.env.NODE_ENV === 'production',
+    secure: true, // For production, always use HTTPS
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: 'none' // Critical for cross-domain requests
   }
 }));
 
@@ -180,6 +183,19 @@ async function ensureSessionTableExists() {
     console.error('Error ensuring sessions table exists:', error);
   }
 }
+
+// In server.js
+app.get('/api/check-auth', (req, res) => {
+  console.log('Session data:', req.session);
+  console.log('User data:', req.user);
+  console.log('Is authenticated:', req.isAuthenticated());
+  
+  if (req.isAuthenticated()) {
+    res.json({ authenticated: true, user: req.user });
+  } else {
+    res.status(401).json({ authenticated: false });
+  }
+});
 
 // Add middleware to ensure sessions table exists before processing auth routes
 app.use('/auth/*', async (req, res, next) => {
