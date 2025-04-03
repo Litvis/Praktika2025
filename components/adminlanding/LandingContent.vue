@@ -86,9 +86,10 @@
                     {{ formatTime(new Date(dashboardStats.lastEmail.created_at)) }}
                   </div>
                 </div>
-                <p class="text-gray-600 line-clamp-3">
-                  {{ dashboardStats.lastEmail.description }}
-                </p>
+                <div 
+  class="text-gray-600 line-clamp-3" 
+  v-html="formatEmailContent(dashboardStats.lastEmail.description)"
+></div>
               </div>
               <div v-else class="bg-gray-50 border border-gray-100 rounded-lg p-4 min-h-40 mb-4 flex items-center justify-center">
                 <p class="text-gray-400">Nėra išsiųstų laiškų</p>
@@ -151,6 +152,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import DOMPurify from 'dompurify';
 
 const router = useRouter();
 const userName = ref('Administratoriau');
@@ -159,6 +161,12 @@ const dashboardStats = ref({
   recentEmails: 0,
   lastEmail: null
 });
+
+// Function to safely display HTML content
+const formatEmailContent = (content) => {
+  if (!content) return '';
+  return DOMPurify.sanitize(content);
+};
 
 // Function to format current date
 const formatDate = (date) => {
