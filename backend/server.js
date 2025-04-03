@@ -225,13 +225,17 @@ app.post('/send-email', async (req, res) => {
     }
 
     // Prepare email data
-    const msg = {
-      to: recipientsArray,
-      from: 'Užimtumo tarnyba',
-      subject,
-      text: message.replace(/<[^>]*>/g, ''), // Create plain text version by removing HTML tags
-      html: message,
-    };
+// Correct format:
+const msg = {
+  to: recipientsArray,
+  from: {
+    email: 'deividaslitvinenko4@gmail.com', // Use your verified sender email
+    name: 'Užimtumo tarnyba'
+  },
+  subject,
+  text: message.replace(/<[^>]*>/g, ''),
+  html: message,
+};
 
     // Add attachments if they exist
     if (attachments && attachments.length > 0) {

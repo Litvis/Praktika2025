@@ -16,13 +16,17 @@ export async function sendEmail(recipient, subject, message) {
     return; 
   }
 
-  const msg = {
-    to: recipientsArray,  // ✅ SendGrid expects an array of emails
-    from: 'Užimtumo tarnyba', 
-    subject: subject,
-    text: message,
-    html: `<p>${message}</p>`,
-  };
+// Correct format:
+const msg = {
+  to: recipientsArray,
+  from: {
+    email: 'deividaslitvinenko4@gmail.com', // Use your verified sender email
+    name: 'Užimtumo tarnyba'
+  },
+  subject,
+  text: message.replace(/<[^>]*>/g, ''),
+  html: message,
+};
 
   try {
     const response = await sgMail.send(msg);
