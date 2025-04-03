@@ -107,12 +107,13 @@ const attachedFiles = ref([]);
 // In your irankis.vue
 console.log("Config:", useRuntimeConfig().public);
 
-onMounted(async () => {
-  console.log("Initial state:", {
-    isLoading: userStore.isLoading,
-    user: userStore.user,
-    isAuthenticated: userStore.isAuthenticated
-  });
+onMounted(() => {
+  // Check if user is authenticated
+  if (!userStore.isAuthenticated) {
+    // Redirect to login page
+    router.push('/login');
+  }
+});
 
   const forceLogout = () => {
   // Clear all cookies
@@ -149,7 +150,7 @@ onMounted(async () => {
     // Force loading to false as a failsafe
     userStore.isLoading = false;
   }
-});
+;
 
 const updateEmails = (newEmails) => {
   if (newEmails.length === 1 && newEmails[0]) {

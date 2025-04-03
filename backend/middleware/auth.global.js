@@ -16,13 +16,6 @@ export default defineNuxtRouteMiddleware((to, from) => {
     user: userStore.user
   });
   
-  // If still loading, don't make navigation decisions yet
-  // But show a loading state or redirect to a loading page
-  if (userStore.isLoading) {
-    console.log('Still loading user data, deferring navigation check');
-    // You could redirect to a loading page here if needed
-    return;
-  }
   
   // IMPORTANT: If user is not authenticated, always redirect to login
   if (!userStore.isAuthenticated) {
