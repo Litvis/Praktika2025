@@ -3,21 +3,58 @@
     <label for="email" class="block text-sm md:text-md font-medium text-gray-700 mb-2">
       Elektroninio pašto adresas
     </label>
-    <input
-      type="text"
-      id="email"
-      v-model="inputValue"
-      placeholder="Recipient Email"
-      class="w-full px-3 py-2 md:px-4 md:py-2 text-sm md:text-base text-gray-700 
-             border-2 border-green-600 rounded-md shadow-lg 
-             focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-green-800 
-             placeholder-gray-400"
-    />
+    
+    <!-- Email input with add button -->
+    <div class="flex space-x-2 mb-3">
+      <input
+        type="email"
+        id="email"
+        v-model="inputValue"
+        @keydown.enter.prevent="addEmail"
+        placeholder="Gavėjo el. paštas"
+        class="flex-grow px-3 py-2 md:px-4 md:py-2 text-sm md:text-base text-gray-700 
+               border-2 border-green-600 rounded-md shadow-lg 
+               focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-green-800 
+               placeholder-gray-400"
+      />
+      <button
+        @click="addEmail"
+        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 
+               transition-colors duration-200 shadow-lg focus:outline-none 
+               focus:ring-2 focus:ring-green-800"
+      >
+        Pridėti
+      </button>
+    </div>
+    
+    <!-- Email tags list -->
+    <div v-if="emailList.length > 0" class="flex flex-wrap gap-2 mb-2">
+      <div 
+        v-for="(email, index) in emailList" 
+        :key="index"
+        class="flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full"
+      >
+        <span class="mr-1">{{ email }}</span>
+        <button 
+          @click="removeEmail(index)"
+          class="text-green-600 hover:text-green-800"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Email validation error message -->
+    <p v-if="errorMessage" class="text-red-500 text-sm mt-1">
+      {{ errorMessage }}
+    </p>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 
 const props = defineProps({
   recipient: {
@@ -28,15 +65,64 @@ const props = defineProps({
 
 const emit = defineEmits(['updateRecipient']);
 
-const inputValue = ref(props.recipient);
+const inputValue = ref('');
+const errorMessage = ref('');
+const emailList = ref([]);
 
-// Ensure two-way binding
-watch(inputValue, (newValue) => {
-  console.log("🔄 Updating recipient:", newValue);
-  emit('updateRecipient', newValue);
-});
-
+// Initialize the list if there's an initial recipient
 watch(() => props.recipient, (newRecipient) => {
-  inputValue.value = newRecipient;
-});
+  if (newRecipient && emailList.value.length === 0) {
+    // Split by commas if multiple recipients are provided
+    const emails = newRecipient.split(',').map(email => email.trim());
+    emailList.value = emails.filter(email => email !== '');
+  }
+}, { immediate: true });
+
+// Validate email format
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// Add email to the list
+const addEmail = () => {
+  const email = inputValue.value.trim();
+  
+  // Skip if empty
+  if (!email) {
+    return;
+  }
+  
+  // Validate email format
+  if (!isValidEmail(email)) {
+    errorMessage.value = 'Neteisingas el. pašto formatas';
+    return;
+  }
+  
+  // Check if email already exists in the list
+  if (emailList.value.includes(email)) {
+    errorMessage.value = 'Šis el. paštas jau pridėtas';
+    return;
+  }
+  
+  // Add to list and clear input
+  emailList.value.push(email);
+  inputValue.value = '';
+  errorMessage.value = '';
+  
+  // Emit the updated list as comma-separated string
+  updateRecipients();
+};
+
+// Remove email from the list
+const removeEmail = (index) => {
+  emailList.value.splice(index, 1);
+  updateRecipients();
+};
+
+// Update the parent component with the current list
+const updateRecipients = () => {
+  const recipientString = emailList.value.join(', ');
+  emit('updateRecipient', recipientString);
+};
 </script>

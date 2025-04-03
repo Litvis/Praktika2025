@@ -118,26 +118,28 @@ async function checkAdminAccess() {
 }
 
 // This will run on component mount
+// Fetch email details when component mounts
 onMounted(() => {
   // Force a fetch of user data if needed
   if (!userStore.user && !userStore.isLoading) {
     userStore.fetchUserProfile().then(() => {
       checkAdminAccess();
+      if (!isCheckingAccess.value) {
+        fetchEmailDetails();
+      }
     });
   } else {
     checkAdminAccess();
+    if (!isCheckingAccess.value) {
+      fetchEmailDetails();
+    }
   }
 });
 
-// This will run whenever the isAdmin state changes
-watch(() => userStore.isAdmin, () => {
-  checkAdminAccess();
-});
-
-// This will run whenever the isLoading state changes
-watch(() => userStore.isLoading, () => {
-  if (!userStore.isLoading) {
-    checkAdminAccess();
+// This will trigger fetchEmailDetails when access check completes
+watch(() => isCheckingAccess.value, (newValue, oldValue) => {
+  if (oldValue === true && newValue === false) {
+    fetchEmailDetails();
   }
 });
 

@@ -8,10 +8,9 @@
           type="text"
           :value="subject"
           @input="updateSubject" 
-          class="font-bold text-gray-900 text-lg border-2 rounded-lg w-full p-2"
-          placeholder="Tekstas..."
+          class=" placeholder-gray-400  border-2 rounded-lg w-full p-2 "
+          placeholder="Įrašykite žinutės temą"
           onfocus="this.placeholder = ''"
-          onblur="this.placeholder = 'Tekstas...'"
         />
       </div>
       <div class="my-2">
@@ -242,13 +241,9 @@ const onEditorInput = (event) => {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&display=swap');
 
-input::placeholder {
-  color: #9e9e9e;
-}
 
 #editor {
   font-family: 'Arimo', sans-serif;
-  font-size: 16px;
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f8fafc;
 }
@@ -267,10 +262,9 @@ input::placeholder {
 }
 
 #editor:empty::before {
-  content: "Tekstas...";
-  color: #9e9e9e;
-  font-size: 18px;
-  font-weight: bold;
+  content: "Rašykitę žinutės turinį";
+  color: #9CA3AF;
+  font-weight: normal;
   pointer-events: none;
 }
 

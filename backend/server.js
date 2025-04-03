@@ -227,7 +227,7 @@ app.post('/send-email', async (req, res) => {
     // Prepare email data
     const msg = {
       to: recipientsArray,
-      from: 'deividaslitvinenko4@gmail.com',
+      from: 'Užimtumo tarnyba',
       subject,
       text: message.replace(/<[^>]*>/g, ''), // Create plain text version by removing HTML tags
       html: message,

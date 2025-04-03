@@ -12,26 +12,7 @@
       <!-- Content area - adjust margin only when sidebar is visible -->
       <div class="p-4 w-full" :class="{ 'ml-64': userStore.isAdmin }">
         <div>
-          <!-- User role indicator -->
-          <div class="mb-4">
-            <div class="flex items-center">
-              <h1 class="text-2xl font-bold text-gray-800">
-                Sveiki, {{ userStore.user?.displayName || 'Vartotojau' }}
-              </h1>
-              <span 
-                v-if="userStore.isAdmin" 
-                class="ml-2 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full"
-              >
-                Administratorius
-              </span>
-              <span 
-                v-else 
-                class="ml-2 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
-              >
-                Darbuotojas
-              </span>
-            </div>
-          </div>
+
 
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-8">
             <div class="flex items-center justify-center">
@@ -79,7 +60,7 @@
                     @click="sendEmail" 
                     class="w-full md:w-48 p-2 md:p-4 rounded-xl bg-green-700 text-white font-bold text-sm md:text-xl"
                   >
-                    Belekas
+                    Siūsti
                     
                   </button>
                   
@@ -112,8 +93,8 @@ const recipientsList = ref([]);
 
 // Options for navigation
 const options = [
-  { id: 'email', label: 'Vienam' },
-  { id: 'group', label: 'Grupei' },
+  { id: 'email', label: 'Vienam ar keliems gavėjams' },
+  { id: 'group', label: 'Grupei gavėjų' },
 ];
 
 // State to hold form data
