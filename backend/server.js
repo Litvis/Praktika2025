@@ -225,17 +225,17 @@ app.post('/send-email', async (req, res) => {
     }
 
     // Prepare email data
-// Correct format:
-const msg = {
-  to: recipientsArray,
-  from: {
-    email: 'deividaslitvinenko4@gmail.com', // Use your verified sender email
-    name: 'Užimtumo tarnyba'
-  },
-  subject,
-  text: message.replace(/<[^>]*>/g, ''),
-  html: message,
-};
+    const msg = {
+      to: recipientsArray.length === 1 ? recipientsArray[0] : null,  // Only use 'to' for single recipient
+      bcc: recipientsArray.length > 1 ? recipientsArray : null,      // Use BCC for multiple recipients
+      from: {
+        email: 'deividaslitvinenko4@gmail.com',
+        name: 'Užimtumo tarnyba'
+      },
+      subject,
+      text: message.replace(/<[^>]*>/g, ''), // Create plain text version by removing HTML tags
+      html: message,
+    };
 
     // Add attachments if they exist
     if (attachments && attachments.length > 0) {
@@ -267,7 +267,7 @@ const msg = {
     // Respond with success message
     res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error:', error.response?.body?.errors || error);
     res.status(500).json({ error: 'Failed to send email or save to database', details: error.message });
   }
 });
@@ -513,14 +513,18 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       return res.status(400).json({ error: 'Invalid recipient email(s)' });
     }
 
-    // Prepare email data
-    const msg = {
-      to: recipientsArray,
-      from: 'deividaslitvinenko4@gmail.com',
-      subject,
-      text: message.replace(/<[^>]*>/g, ''),
-      html: message,
-    };
+// In the send-email-multipart endpoint
+const msg = {
+  to: recipientsArray.length === 1 ? recipientsArray[0] : null,
+  bcc: recipientsArray.length > 1 ? recipientsArray : null,
+  from: {
+    email: 'deividaslitvinenko4@gmail.com',
+    name: 'Užimtumo tarnyba'
+  },
+  subject,
+  text: message.replace(/<[^>]*>/g, ''),
+  html: message,
+};
 
     // Add attachments if files were uploaded
     if (req.files && req.files.length > 0) {
