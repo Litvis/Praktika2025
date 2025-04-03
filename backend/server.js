@@ -209,7 +209,6 @@ app.use('/auth/*', async (req, res, next) => {
 });
 
 // Handle JSON payload emails (with base64 attachments)
-// Updated email sending logic
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
   console.log("📤 Incoming JSON request from frontend");
@@ -225,30 +224,18 @@ app.post('/send-email', async (req, res) => {
       return res.status(400).json({ error: 'Invalid recipient email(s)' });
     }
 
-    // Prepare email data with proper personalization
-    const msg = {
-      personalizations: recipientsArray.map(email => ({
-        to: [{ email }],
-        bcc: recipientsArray.length > 1 
-          ? recipientsArray.filter(r => r !== email).map(bccEmail => ({ email: bccEmail })) 
-          : undefined
-      })),
-      from: {
-        email: 'deividaslitvinenko4@gmail.com',
-        name: 'Užimtumo tarnyba'
-      },
-      subject,
-      content: [
-        {
-          type: 'text/plain',
-          value: message.replace(/<[^>]*>/g, '') // Plain text version
-        },
-        {
-          type: 'text/html',
-          value: message // HTML version
-        }
-      ]
-    };
+    // Prepare email data
+// Correct format:
+const msg = {
+  to: recipientsArray,
+  from: {
+    email: 'deividaslitvinenko4@gmail.com', // Use your verified sender email
+    name: 'Užimtumo tarnyba'
+  },
+  subject,
+  text: message.replace(/<[^>]*>/g, ''),
+  html: message,
+};
 
     // Add attachments if they exist
     if (attachments && attachments.length > 0) {
@@ -270,7 +257,7 @@ app.post('/send-email', async (req, res) => {
       ? attachments.map(a => a.filename).join(', ') 
       : null;
 
-    // Save the email data to the database
+    // Save the email data to the database - UPDATED to use pool instead of client
     const dbResult = await pool.query(
       'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
       [subject, message, recipient, attachmentNames]
@@ -280,11 +267,8 @@ app.post('/send-email', async (req, res) => {
     // Respond with success message
     res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
   } catch (error) {
-    console.error('❌ Error:', error.response?.body?.errors || error);
-    res.status(500).json({ 
-      error: 'Failed to send email or save to database', 
-      details: error.response?.body?.errors || error.message 
-    });
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to send email or save to database', details: error.message });
   }
 });
 
@@ -529,18 +513,14 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       return res.status(400).json({ error: 'Invalid recipient email(s)' });
     }
 
-// In the send-email-multipart endpoint
-const msg = {
-  to: recipientsArray.length === 1 ? recipientsArray[0] : null,
-  bcc: recipientsArray.length > 1 ? recipientsArray : null,
-  from: {
-    email: 'deividaslitvinenko4@gmail.com',
-    name: 'Užimtumo tarnyba'
-  },
-  subject,
-  text: message.replace(/<[^>]*>/g, ''),
-  html: message,
-};
+    // Prepare email data
+    const msg = {
+      to: recipientsArray,
+      from: 'deividaslitvinenko4@gmail.com',
+      subject,
+      text: message.replace(/<[^>]*>/g, ''),
+      html: message,
+    };
 
     // Add attachments if files were uploaded
     if (req.files && req.files.length > 0) {
