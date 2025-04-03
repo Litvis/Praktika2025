@@ -1,6 +1,12 @@
 <template>
-  <div class="flex flex-col md:flex-row h-screen">
-    <!-- Loading overlay while checking authentication -->
+  <!-- Immediate loading overlay that appears before any authentication check -->
+  <div v-if="isInitialLoading" class="fixed inset-0 flex flex-col items-center justify-center bg-white z-50">
+    <div class="w-16 h-16 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin mb-4"></div>
+    <p class="text-gray-600 text-lg">Tikrinama prisijungimo informacija...</p>
+  </div>
+
+  <div v-else class="flex flex-col md:flex-row h-screen">
+    <!-- Secondary loading overlay for user data loading -->
     <div v-if="userStore.isLoading" class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
       <div class="w-12 h-12 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
     </div>
@@ -12,8 +18,6 @@
       <!-- Content area - adjust margin only when sidebar is visible -->
       <div class="p-4 w-full" :class="{ 'ml-64': userStore.isAdmin }">
         <div>
-
-
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-8">
             <div class="flex items-center justify-center">
               <div class="w-full max-w-md bg-white rounded-xl border-2 p-6">
@@ -61,9 +65,7 @@
                     class="w-full md:w-48 p-2 md:p-4 rounded-xl bg-green-700 text-white font-bold text-sm md:text-xl"
                   >
                     Siūsti
-                    
                   </button>
-                  
                 </div>
               </div>
             </div>
@@ -83,6 +85,9 @@ import NavigationButtons from '~/components/irankis/NavigationButtons.vue';
 import EmailInput from '~/components/irankis/EmailInput.vue';
 import GroupSelection from '~/components/irankis/GroupSelection.vue';
 import TextArea from '~/components/irankis/TextArea.vue';
+
+// Add state for initial loading screen
+const isInitialLoading = ref(true);
 
 // User store for authentication and role checking
 const router = useRouter();
@@ -106,18 +111,37 @@ const message = ref('');
 // Add state for attachments
 const attachedFiles = ref([]);
 
-// In your irankis.vue
-console.log("Config:", useRuntimeConfig().public);
-
-onMounted(() => {
-  // Check if user is authenticated
-  if (!userStore.isAuthenticated) {
-    // Redirect to login page
+// Enhanced authentication check with loading
+onMounted(async () => {
+  console.log("Component mounted, checking authentication...");
+  
+  try {
+    // Show loading screen immediately
+    isInitialLoading.value = true;
+    
+    // Fetch user profile data
+    await userStore.fetchUserProfile();
+    
+    // Check if user is authenticated after profile is loaded
+    if (!userStore.isAuthenticated) {
+      console.log("User not authenticated, redirecting to login");
+      router.push('/login');
+      return;
+    }
+    
+    console.log("Authentication check complete, user is authenticated");
+  } catch (error) {
+    console.error("Error during authentication check:", error);
     router.push('/login');
+  } finally {
+    // Hide initial loading screen only if user is authenticated
+    if (userStore.isAuthenticated) {
+      isInitialLoading.value = false;
+    }
   }
 });
 
-  const forceLogout = () => {
+const forceLogout = () => {
   // Clear all cookies
   document.cookie.split(";").forEach(function(c) {
     document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
@@ -137,22 +161,6 @@ onMounted(() => {
     window.location.href = "/login";
   }, 1000);
 };
-  
-  // Force a fresh fetch regardless of cache
-  try {
-    const result = await userStore.fetchUserProfile();
-    console.log("Fetch result:", result);
-    console.log("After fetch:", {
-      isLoading: userStore.isLoading,
-      user: userStore.user,
-      isAuthenticated: userStore.isAuthenticated
-    });
-  } catch (e) {
-    console.error("Fetch error:", e);
-    // Force loading to false as a failsafe
-    userStore.isLoading = false;
-  }
-;
 
 const updateEmails = (newEmails) => {
   if (newEmails.length === 1 && newEmails[0]) {
@@ -241,3 +249,14 @@ const fileToBase64 = (file) => {
   });
 };
 </script>
+
+<style scoped>
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+</style>
