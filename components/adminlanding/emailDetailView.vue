@@ -78,7 +78,8 @@
   import { ref, computed, onMounted } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import Sidebar from '~/components/adminlanding/Sidebar.vue';
-  
+  import DOMPurify from 'dompurify';
+
   // Router and route
   const route = useRoute();
   const router = useRouter();
@@ -125,13 +126,11 @@
     return date.toLocaleTimeString('lt-LT', { hour: '2-digit', minute: '2-digit' });
   };
   
-  // Format email content (basic XSS prevention)
-  const formatEmailContent = (content) => {
-    return content
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\n/g, '<br>');
-  };
+const formatEmailContent = (content) => {
+  if (!content) return '';
+  // DOMPurify will sanitize the HTML but preserve formatting
+  return DOMPurify.sanitize(content);
+};
   
   // Navigation
   const goBack = () => {
