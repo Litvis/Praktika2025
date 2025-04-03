@@ -77,6 +77,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useUserStore } from '~/stores/user.js';
+import { useRouter } from 'vue-router';
 import Sidebar from '~/components/adminlanding/Sidebar.vue';
 import NavigationButtons from '~/components/irankis/NavigationButtons.vue';
 import EmailInput from '~/components/irankis/EmailInput.vue';
@@ -84,6 +85,7 @@ import GroupSelection from '~/components/irankis/GroupSelection.vue';
 import TextArea from '~/components/irankis/TextArea.vue';
 
 // User store for authentication and role checking
+const router = useRouter();
 const userStore = useUserStore();
 
 // State for current option and recipient
