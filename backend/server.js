@@ -232,9 +232,9 @@ app.post('/send-email', async (req, res) => {
 
     // Prepare email data
     const msg = {
-      to: recipientsArray,
+      bcc: recipientsArray,  // Use bcc instead of to
       from: {
-        email: 'deividaslitvinenko4@gmail.com', // Verified sender email
+        email: 'deividaslitvinenko4@gmail.com',
         name: 'Užimtumo tarnyba'
       },
       subject,
@@ -540,7 +540,7 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
 
     // Prepare email data
     const msg = {
-      to: recipientsArray,
+      bcc: recipientsArray,
       from: 'deividaslitvinenko4@gmail.com',
       subject,
       text: message.replace(/<[^>]*>/g, ''),
