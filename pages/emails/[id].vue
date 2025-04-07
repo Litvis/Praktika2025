@@ -1,3 +1,4 @@
+
 <template>
   <!-- Loading overlay that appears immediately on page load -->
   <div v-if="isCheckingAccess" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
@@ -6,9 +7,9 @@
   </div>
 
   <!-- Actual page content (only shown after verification) -->
-  <div v-else class="flex flex-row h-screen bg-gray-50">
+  <div v-else class="flex h-screen bg-gray-50">
     <Sidebar />
-    <div class="w-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
+    <div class="main-content-with-sidebar flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
       <!-- Loading State -->
       <div v-if="isLoading" class="flex-grow flex items-center justify-center">
         <div class="inline-block w-8 h-8 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white border-r border-gray-200 h-screen fixed z-10 w-64 flex flex-col shadow-sm overflow-y-auto">
+  <div class="bg-white border-r border-gray-200 fixed z-10 sidebar-width flex flex-col shadow-sm overflow-y-auto h-screen">
     <!-- Logo Section -->
     <div class="p-6 flex justify-center border-b border-gray-100">
       <div class="max-w-32">
@@ -109,9 +109,19 @@
   const $route = useRoute();
   </script>
   
-  <style scoped>
-  /* Ensure parent container accommodates fixed sidebar */
-  :deep(body) {
-    overflow-x: hidden;
+  <style>
+  /* Global CSS variables for consistent sidebar spacing across all components */
+  :root {
+    --sidebar-width: 16rem; /* 64px (w-64) */
+  }
+  
+  .sidebar-width {
+    width: var(--sidebar-width);
+  }
+  
+  /* Add a class that all main content containers can use */
+  .main-content-with-sidebar {
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
   }
   </style>

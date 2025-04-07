@@ -5,7 +5,7 @@
     <p class="text-gray-600 text-lg">Tikrinama prisijungimo informacija...</p>
   </div>
 
-  <div v-else class="flex flex-col md:flex-row h-screen">
+  <div v-else class="flex h-screen">
     <!-- Secondary loading overlay for user data loading -->
     <div v-if="userStore.isLoading" class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
       <div class="w-12 h-12 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
@@ -13,10 +13,10 @@
 
     <template v-else>
       <!-- Show Sidebar only for admin users -->
-      <Sidebar v-if="userStore.isAdmin" class="md:w-1/5 lg:w-1/6" />
+      <Sidebar v-if="userStore.isAdmin" />
       
-      <!-- Content area - adjust margin only when sidebar is visible -->
-      <div class="p-4 w-full" :class="{ 'ml-64': userStore.isAdmin }">
+      <!-- Content area with proper spacing for sidebar -->
+      <div class="p-4 w-full min-h-screen overflow-y-auto" :class="{ 'main-content-with-sidebar': userStore.isAdmin }">
         <div>
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-8">
             <div class="flex items-center justify-center">

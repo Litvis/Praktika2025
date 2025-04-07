@@ -6,9 +6,9 @@
   </div>
 
   <!-- Actual page content (only shown after verification) -->
-  <div v-else class="flex flex-row h-screen bg-gray-50">
+  <div v-else class="flex h-screen bg-gray-50">
     <Sidebar />
-    <div class="w-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
+    <div class="main-content-with-sidebar flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
       <!-- Header Section -->
       <div class="px-8 py-6">
         <h1 class="font-bold text-4xl text-gray-800">Sąrašas</h1>
