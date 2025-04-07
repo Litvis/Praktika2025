@@ -208,7 +208,7 @@ app.use('/auth/*', async (req, res, next) => {
   }
 });
 
-// Handle JSON payload emails (with base64 attachments)
+// Improved route handler for sending emails
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
   console.log("📤 Incoming JSON request from frontend");
@@ -224,18 +224,23 @@ app.post('/send-email', async (req, res) => {
       return res.status(400).json({ error: 'Invalid recipient email(s)' });
     }
 
+    // Check for API key
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error("❌ SendGrid API key is missing");
+      return res.status(500).json({ error: 'Email service configuration error' });
+    }
+
     // Prepare email data
-// Correct format:
-const msg = {
-  to: recipientsArray,
-  from: {
-    email: 'deividaslitvinenko4@gmail.com', // Use your verified sender email
-    name: 'Užimtumo tarnyba'
-  },
-  subject,
-  text: message.replace(/<[^>]*>/g, ''),
-  html: message,
-};
+    const msg = {
+      to: recipientsArray,
+      from: {
+        email: 'deividaslitvinenko4@gmail.com', // Verified sender email
+        name: 'Užimtumo tarnyba'
+      },
+      subject,
+      text: message.replace(/<[^>]*>/g, ''),
+      html: message,
+    };
 
     // Add attachments if they exist
     if (attachments && attachments.length > 0) {
@@ -249,15 +254,17 @@ const msg = {
     }
 
     // Send email via SendGrid
-    await sgMail.send(msg);
-    console.log("✅ Email sent successfully");
+    const [response] = await sgMail.send(msg);
+    
+    // Log detailed response
+    console.log("✅ Email sent successfully with status code:", response.statusCode);
+    console.log("SendGrid headers:", response.headers);
 
-    // Prepare attachment filenames for database storage
+    // Save the email data to the database only if sending succeeded
     const attachmentNames = attachments 
       ? attachments.map(a => a.filename).join(', ') 
       : null;
 
-    // Save the email data to the database - UPDATED to use pool instead of client
     const dbResult = await pool.query(
       'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
       [subject, message, recipient, attachmentNames]
@@ -265,10 +272,28 @@ const msg = {
     console.log("✅ Saved to DB:", dbResult.rows[0]);
 
     // Respond with success message
-    res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
+    res.status(200).json({ 
+      success: true, 
+      message: 'Email sent and saved successfully',
+      statusCode: response.statusCode
+    });
   } catch (error) {
-    console.error('❌ Error:', error);
-    res.status(500).json({ error: 'Failed to send email or save to database', details: error.message });
+    // Enhanced error logging
+    console.error('❌ Error sending email:');
+    console.error('Error object:', error);
+    
+    if (error.response) {
+      console.error('SendGrid API response statusCode:', error.response.statusCode);
+      console.error('SendGrid API response body:', error.response.body);
+      console.error('SendGrid API response headers:', error.response.headers);
+    }
+    
+    // Return meaningful error to client
+    res.status(500).json({ 
+      error: 'Failed to send email', 
+      details: error.message,
+      sendGridError: error.response?.body || null
+    });
   }
 });
 

@@ -182,46 +182,72 @@ const updateAttachedFiles = (files) => {
   attachedFiles.value = files;
 };
 
+// Enhanced sendEmail function for your frontend
 const sendEmail = async () => {
-  let recipientsToUse = '';
-  
-  if (currentOption.value === 'group' || currentOption.value === 'csv') {
-    recipientsToUse = recipientsList.value.join(',');
-    
-    if (!recipientsToUse) {
-      alert("❌ Please select a group with valid emails!");
-      return;
-    }
-  } else {
-    recipientsToUse = recipient.value;
-    
-    if (!recipientsToUse || recipientsToUse.trim() === '') {
-      alert("❌ Please enter a valid email!");
-      return;
-    }
-  }
-
-  const attachments = [];
-  for (const file of attachedFiles.value) {
-    const base64Content = await fileToBase64(file);
-    attachments.push({
-      content: base64Content.split(',')[1],
-      filename: file.name,
-      type: file.type,
-      disposition: 'attachment'
-    });
-  }
-
-  const emailData = {
-    recipient: recipientsToUse,
-    subject: subject.value.trim(),
-    message: message.value.trim(),
-    attachments: attachments
-  };
-
-  console.log("📤 Sending email data:", JSON.stringify(emailData, null, 2));
+  // Show loading indicator
+  const isLoading = ref(true);
+  let statusMessage = ref('Sending email...');
 
   try {
+    let recipientsToUse = '';
+    
+    if (currentOption.value === 'group' || currentOption.value === 'csv') {
+      recipientsToUse = recipientsList.value.join(',');
+      
+      if (!recipientsToUse) {
+        alert("❌ Please select a group with valid emails!");
+        isLoading.value = false;
+        return;
+      }
+    } else {
+      recipientsToUse = recipient.value;
+      
+      if (!recipientsToUse || recipientsToUse.trim() === '') {
+        alert("❌ Please enter a valid email!");
+        isLoading.value = false;
+        return;
+      }
+    }
+
+    // Validate subject and message
+    if (!subject.value.trim()) {
+      alert("❌ Please enter a subject for your email!");
+      isLoading.value = false;
+      return;
+    }
+    
+    if (!message.value.trim()) {
+      alert("❌ Please enter a message for your email!");
+      isLoading.value = false;
+      return;
+    }
+
+    statusMessage.value = 'Processing attachments...';
+    const attachments = [];
+    for (const file of attachedFiles.value) {
+      const base64Content = await fileToBase64(file);
+      attachments.push({
+        content: base64Content.split(',')[1],
+        filename: file.name,
+        type: file.type,
+        disposition: 'attachment'
+      });
+    }
+
+    const emailData = {
+      recipient: recipientsToUse,
+      subject: subject.value.trim(),
+      message: message.value.trim(),
+      attachments: attachments
+    };
+
+    console.log("📤 Sending email data:", JSON.stringify({
+      recipient: emailData.recipient,
+      subject: emailData.subject,
+      attachmentsCount: emailData.attachments.length
+    }, null, 2));
+
+    statusMessage.value = 'Sending to server...';
     const config = useRuntimeConfig();
 
     const response = await $fetch(`${config.public.apiBase}/send-email`, { 
@@ -230,13 +256,34 @@ const sendEmail = async () => {
       body: emailData,
     });
 
-    console.log("✅ Email sent successfully:", response);
-    alert('Email sent successfully!');
+    console.log("✅ Server response:", response);
     
-    attachedFiles.value = [];
+    if (response.success) {
+      alert('Email sent successfully! Status code: ' + (response.statusCode || 'OK'));
+      
+      // Clear form fields after successful sending
+      subject.value = '';
+      message.value = '';
+      attachedFiles.value = [];
+      
+      // You could also clear recipient if needed
+      // recipient.value = '';
+    } else {
+      alert('Something went wrong. Server reported success but with errors: ' + JSON.stringify(response.error || {}));
+    }
   } catch (error) {
     console.error('❌ Error sending email:', error);
-    alert('Failed to send email.');
+    let errorMessage = 'Failed to send email.';
+    
+    if (error.data && error.data.sendGridError) {
+      errorMessage += ' SendGrid error: ' + JSON.stringify(error.data.sendGridError);
+    } else if (error.message) {
+      errorMessage += ' Error: ' + error.message;
+    }
+    
+    alert(errorMessage);
+  } finally {
+    isLoading.value = false;
   }
 };
 
