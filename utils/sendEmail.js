@@ -16,18 +16,28 @@ export async function sendEmail(recipient, subject, message) {
     return; 
   }
 
-// Correct format:
-const msg = {
-  to: recipientsArray,
-  from: {
-    email: 'deividaslitvinenko4@gmail.com', // Use your verified sender email
-    name: 'Užimtumo tarnyba'
-  },
-  subject,
-  text: message.replace(/<[^>]*>/g, ''),
-  html: message,
-};
-
+  const personalizations = recipientsArray.map(email => ({
+    to: [{ email }],
+    subject: subject
+  }));
+  
+  const msg = {
+    personalizations: personalizations,
+    from: {
+      email: 'deividaslitvinenko4@gmail.com',
+      name: 'Užimtumo tarnyba'
+    },
+    content: [
+      {
+        type: 'text/plain',
+        value: message.replace(/<[^>]*>/g, '')
+      },
+      {
+        type: 'text/html',
+        value: message
+      }
+    ]
+  };
   try {
     const response = await sgMail.send(msg);
     console.log('✅ Email sent successfully:', response);

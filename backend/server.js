@@ -230,16 +230,27 @@ app.post('/send-email', async (req, res) => {
       return res.status(500).json({ error: 'Email service configuration error' });
     }
 
-    // Prepare email data
+    const personalizations = recipientsArray.map(email => ({
+      to: [{ email }],
+      subject: subject
+    }));
+    
     const msg = {
-      bcc: recipientsArray,  // Use bcc instead of to
+      personalizations: personalizations,
       from: {
         email: 'deividaslitvinenko4@gmail.com',
         name: 'Užimtumo tarnyba'
       },
-      subject,
-      text: message.replace(/<[^>]*>/g, ''),
-      html: message,
+      content: [
+        {
+          type: 'text/plain',
+          value: message.replace(/<[^>]*>/g, '')
+        },
+        {
+          type: 'text/html',
+          value: message
+        }
+      ]
     };
 
     // Add attachments if they exist
@@ -538,13 +549,27 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       return res.status(400).json({ error: 'Invalid recipient email(s)' });
     }
 
-    // Prepare email data
+    const personalizations = recipientsArray.map(email => ({
+      to: [{ email }],
+      subject: subject
+    }));
+    
     const msg = {
-      bcc: recipientsArray,
-      from: 'deividaslitvinenko4@gmail.com',
-      subject,
-      text: message.replace(/<[^>]*>/g, ''),
-      html: message,
+      personalizations: personalizations,
+      from: {
+        email: 'deividaslitvinenko4@gmail.com',
+        name: 'Užimtumo tarnyba'
+      },
+      content: [
+        {
+          type: 'text/plain',
+          value: message.replace(/<[^>]*>/g, '')
+        },
+        {
+          type: 'text/html',
+          value: message
+        }
+      ]
     };
 
     // Add attachments if files were uploaded
