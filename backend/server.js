@@ -209,7 +209,7 @@ app.use('/auth/*', async (req, res, next) => {
 });
 
 // Improved route handler for sending emails
-app.post('/api/send-email', async (req, res) => {
+app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
   console.log("📤 Incoming JSON request from frontend");
 
