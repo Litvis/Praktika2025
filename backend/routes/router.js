@@ -26,6 +26,12 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
+    path: '/csv-management',
+    name: 'CsvManagement',
+    component: () => import('../pages/CsvManagement.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
     path: '/irankis',
     name: 'Irankis',
     component: () => import('../pages/Irankis.vue'),

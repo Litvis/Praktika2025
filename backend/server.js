@@ -14,6 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import googleAuthRouter from './auth/google.js';
 import userManagementRoutes from './middleware/userManagement.js';
+import csvImportRoutes from './routes/csvImportRoutes.js';
 
 dotenv.config();
 
@@ -77,6 +78,7 @@ app.use(passport.session());
 app.use(googleAuthRouter);
 app.use(authRoutes);
 app.use(userManagementRoutes);
+app.use(csvImportRoutes);
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -185,6 +187,8 @@ async function ensureSessionTableExists() {
     console.error('Error ensuring sessions table exists:', error);
   }
 }
+
+
 
 // In server.js
 app.get('/api/check-auth', (req, res) => {
