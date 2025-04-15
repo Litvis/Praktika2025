@@ -61,14 +61,14 @@
         to="/user-management" 
         class="flex items-center px-4 py-3 mb-3 rounded-lg transition-all duration-200 group"
         :class="{ 
-          'bg-green-600 text-white shadow-md': $route.path === '/user-management',
-          'text-gray-700 hover:bg-gray-100': $route.path !== '/user-management'
+          'bg-green-600 text-white shadow-md': $route.path === '/UserManagement',
+          'text-gray-700 hover:bg-gray-100': $route.path !== '/UserManagement'
         }"
       >
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
           class="h-5 w-5 mr-3" 
-          :class="{ 'text-white': $route.path === '/user-management', 'text-gray-500 group-hover:text-gray-700': $route.path !== '/user-management' }"
+          :class="{ 'text-white': $route.path === '/UserManagement', 'text-gray-500 group-hover:text-gray-700': $route.path !== '/user-management' }"
           fill="none" 
           viewBox="0 0 24 24" 
           stroke="currentColor"
