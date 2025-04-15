@@ -9,26 +9,11 @@ dotenv.config();
 // Create the router
 const router = express.Router();
 
-// List of allowed email domains and specific email addresses
-const ALLOWED_DOMAINS = ['uzt.lt']; // Company domain
+// List of allowed specific email addresses for non-company domains
 const ALLOWED_EMAILS = [
   'deividaslitvinenko4@gmail.com', 
   'deividaslita@gmail.com'
 ]; // Test accounts
-
-// Function to check if an email is allowed
-function isEmailAllowed(email) {
-  if (!email) return false;
-  
-  // Check if it's a specifically allowed email address
-  if (ALLOWED_EMAILS.includes(email.toLowerCase())) {
-    return true;
-  }
-  
-  // Check if the domain is allowed
-  const domain = email.split('@')[1];
-  return ALLOWED_DOMAINS.includes(domain);
-}
 
 // Configure Passport serialization
 passport.serializeUser((user, done) => {
@@ -82,7 +67,7 @@ passport.deserializeUser(async (userData, done) => {
   }
 });
 
-// Modify the Google OAuth strategy
+// Google OAuth strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -92,16 +77,20 @@ passport.use(new GoogleStrategy({
   try {
     // Validate profile
     if (!profile || !profile.emails || !profile.emails[0]) {
+      console.error('Invalid profile information');
       return done(null, false, { message: 'Invalid profile information' });
     }
 
     const userEmail = profile.emails[0].value;
     console.log(`OAuth login attempt with email: ${userEmail}`);
 
-    // Check if email is allowed
-    if (!isEmailAllowed(userEmail)) {
-      console.log(`Email domain not allowed: ${userEmail}`);
-      return done(null, false, { message: 'Email domain not allowed' });
+    // For personal Gmail accounts, check if they're in the allowed list
+    if (!userEmail.endsWith('@uzt.lt')) {
+      if (!ALLOWED_EMAILS.includes(userEmail.toLowerCase())) {
+        console.log(`Email not allowed: ${userEmail}`);
+        return done(null, false, { message: 'Email not allowed' });
+      }
+      console.log(`Gmail account allowed: ${userEmail}`);
     }
 
     // Check if user exists in our database
@@ -164,8 +153,27 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-// Modified callback route to handle redirects based on approval status
+// Company email login route (with hd parameter)
+router.get('/auth/google', 
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    prompt: 'select_account',
+    hd: 'uzt.lt' // Restrict to uzt.lt domain
+  })
+);
+
+// Alternative route for authorized personal emails
+router.get('/auth/google-alt', 
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    prompt: 'select_account' // No hd parameter
+  })
+);
+
+// Google OAuth callback handler
 router.get('/auth/google/callback', (req, res, next) => {
+  console.log('Google OAuth callback received');
+  
   passport.authenticate('google', async (err, user, info) => {
     if (err) {
       console.error('Authentication error:', err);
@@ -175,17 +183,18 @@ router.get('/auth/google/callback', (req, res, next) => {
     if (!user) {
       console.error('User not found or not authorized:', info?.message || 'Unknown reason');
       
-      // If email domain is not allowed, redirect to login with specific error
-      if (info && info.message === 'Email domain not allowed') {
-        return res.redirect('https://praktika2025.vercel.app/login?error=domain_not_allowed');
+      // Determine the specific error for better user feedback
+      let errorType = 'unauthorized';
+      if (info && (info.message === 'Email not allowed' || info.message === 'Email domain not allowed')) {
+        errorType = 'domain_not_allowed';
       }
       
-      return res.redirect('https://praktika2025.vercel.app/login?error=unauthorized');
+      return res.redirect(`https://praktika2025.vercel.app/login?error=${errorType}`);
     }
 
     try {
       // Log user information before login
-      console.log('User found, attempting login:', {
+      console.log('User authenticated, attempting login:', {
         id: user.id,
         email: user.emails?.[0]?.value,
         role: user.role
@@ -199,8 +208,7 @@ router.get('/auth/google/callback', (req, res, next) => {
         }
 
         // Log session after login
-        console.log('Session after login:', req.session);
-        console.log('Session ID:', req.sessionID);
+        console.log('Session created, ID:', req.sessionID);
         console.log('Is authenticated:', req.isAuthenticated());
 
         // Set a successful login cookie with appropriate settings
@@ -228,11 +236,6 @@ router.get('/auth/google/callback', (req, res, next) => {
     }
   })(req, res, next);
 });
-
-// Google OAuth routes
-router.get('/auth/google', 
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
 
 // Logout route
 router.get('/logout', (req, res, next) => {
