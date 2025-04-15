@@ -9,6 +9,27 @@ dotenv.config();
 // Create the router
 const router = express.Router();
 
+// List of allowed email domains and specific email addresses
+const ALLOWED_DOMAINS = ['uzt.lt']; // Company domain
+const ALLOWED_EMAILS = [
+  'deividaslitvinenko4@gmail.com', 
+  'deividaslita@gmail.com'
+]; // Test accounts
+
+// Function to check if an email is allowed
+function isEmailAllowed(email) {
+  if (!email) return false;
+  
+  // Check if it's a specifically allowed email address
+  if (ALLOWED_EMAILS.includes(email.toLowerCase())) {
+    return true;
+  }
+  
+  // Check if the domain is allowed
+  const domain = email.split('@')[1];
+  return ALLOWED_DOMAINS.includes(domain);
+}
+
 // Configure Passport serialization
 passport.serializeUser((user, done) => {
   // Explicitly handle the serialization
@@ -76,6 +97,12 @@ passport.use(new GoogleStrategy({
 
     const userEmail = profile.emails[0].value;
     console.log(`OAuth login attempt with email: ${userEmail}`);
+
+    // Check if email is allowed
+    if (!isEmailAllowed(userEmail)) {
+      console.log(`Email domain not allowed: ${userEmail}`);
+      return done(null, false, { message: 'Email domain not allowed' });
+    }
 
     // Check if user exists in our database
     const userResult = await pool.query(
@@ -146,7 +173,13 @@ router.get('/auth/google/callback', (req, res, next) => {
     }
     
     if (!user) {
-      console.error('User not found or not authorized');
+      console.error('User not found or not authorized:', info?.message || 'Unknown reason');
+      
+      // If email domain is not allowed, redirect to login with specific error
+      if (info && info.message === 'Email domain not allowed') {
+        return res.redirect('https://praktika2025.vercel.app/login?error=domain_not_allowed');
+      }
+      
       return res.redirect('https://praktika2025.vercel.app/login?error=unauthorized');
     }
 
