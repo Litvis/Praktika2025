@@ -154,7 +154,7 @@ router.get('/api/groups/:id/emails', requireAuth, async (req, res) => {
   }
 });
 
-// Import data from CSV
+// Import data from CSV (replacing all existing data)
 router.post('/api/import-csv', requireAdmin, async (req, res) => {
   const client = await pool.connect();
   
@@ -172,11 +172,16 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
     // Start a transaction
     await client.query('BEGIN');
     
+    // First, delete all existing data
+    await client.query('DELETE FROM group_emails');
+    await client.query('DELETE FROM email_groups');
+    
+    console.log('Cleared existing data');
+    
     // Stats to track the import process
     const stats = {
-      newGroups: 0,
-      totalEmails: 0,
-      duplicates: 0
+      groups: 0,
+      emails: 0
     };
     
     // Process groups
@@ -186,27 +191,18 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
     // First pass: collect all unique group names
     data.forEach(row => uniqueGroups.add(row.Group));
     
-    // For each unique group, check if it exists or create it
+    // For each unique group, create it
     for (const groupName of uniqueGroups) {
-      const existingGroup = await client.query(
-        'SELECT id FROM email_groups WHERE name = $1',
+      const newGroup = await client.query(
+        'INSERT INTO email_groups (name) VALUES ($1) RETURNING id',
         [groupName]
       );
       
-      if (existingGroup.rows.length > 0) {
-        // Group exists, store its ID
-        groupNameToId[groupName] = existingGroup.rows[0].id;
-      } else {
-        // Create a new group
-        const newGroup = await client.query(
-          'INSERT INTO email_groups (name) VALUES ($1) RETURNING id',
-          [groupName]
-        );
-        
-        groupNameToId[groupName] = newGroup.rows[0].id;
-        stats.newGroups++;
-      }
+      groupNameToId[groupName] = newGroup.rows[0].id;
+      stats.groups++;
     }
+    
+    console.log(`Created ${stats.groups} new groups`);
     
     // Process emails
     for (const row of data) {
@@ -217,7 +213,7 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
       const email = row.Email.trim();
       
       try {
-        // Try to insert the email, handling duplicate constraint violations
+        // Insert the email, handling duplicate constraint violations
         await client.query(
           `INSERT INTO group_emails (group_id, email) 
            VALUES ($1, $2)
@@ -225,32 +221,21 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
           [groupId, email]
         );
         
-        // Check if a row was actually inserted
-        const inserted = await client.query(
-          'SELECT EXISTS(SELECT 1 FROM group_emails WHERE group_id = $1 AND email = $2 AND created_at > NOW() - INTERVAL \'5 second\')',
-          [groupId, email]
-        );
-        
-        if (inserted.rows[0].exists) {
-          stats.totalEmails++;
-        } else {
-          stats.duplicates++;
-        }
+        stats.emails++;
       } catch (err) {
-        // If it's not a duplicate error, rethrow it
-        if (err.code !== '23505') {
-          throw err;
-        }
-        stats.duplicates++;
+        // Log any errors but continue processing
+        console.error(`Error inserting email ${email}:`, err.message);
       }
     }
+    
+    console.log(`Added ${stats.emails} emails`);
     
     // Commit the transaction
     await client.query('COMMIT');
     
     res.json({
       success: true,
-      message: 'Data imported successfully',
+      message: 'Data imported successfully (replaced all existing data)',
       stats: stats
     });
   } catch (error) {
@@ -259,47 +244,6 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Failed to import data: ' + error.message 
-    });
-  } finally {
-    client.release();
-  }
-});
-
-// Delete a group
-router.delete('/api/groups/:id', requireAdmin, async (req, res) => {
-  const client = await pool.connect();
-  
-  try {
-    const groupId = req.params.id;
-    
-    await client.query('BEGIN');
-    
-    // Delete the group (cascade will handle the emails)
-    const result = await client.query(
-      'DELETE FROM email_groups WHERE id = $1 RETURNING name',
-      [groupId]
-    );
-    
-    if (result.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({
-        success: false,
-        error: 'Group not found'
-      });
-    }
-    
-    await client.query('COMMIT');
-    
-    res.json({
-      success: true,
-      message: `Group "${result.rows[0].name}" deleted successfully`
-    });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error(`Error deleting group ${req.params.id}:`, error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to delete group' 
     });
   } finally {
     client.release();

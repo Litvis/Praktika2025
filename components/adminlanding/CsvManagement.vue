@@ -6,7 +6,12 @@
         
         <!-- CSV Upload Section -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 class="text-xl font-semibold text-gray-700 mb-4">Importuoti grupes iš CSV</h2>
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold text-gray-700">Importuoti grupes iš CSV</h2>
+            <div class="bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
+              <p class="text-xs text-yellow-700 font-medium">⚠️ Naujas importas pakeis visus esamus duomenis</p>
+            </div>
+          </div>
           
           <!-- File Upload Area -->
           <div 
@@ -99,6 +104,22 @@
             </div>
           </div>
           
+          <!-- Warning about replacing data -->
+          <div v-if="parsedData.length > 0" class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              <div class="ml-3">
+                <p class="text-sm font-medium text-yellow-800">Dėmesio: Visi esami duomenys bus pakeisti</p>
+                <p class="text-xs text-yellow-700 mt-1">
+                  Importuojant šį failą, visi esami el. paštų grupių duomenys bus ištrinti ir pakeisti naujais. 
+                  Šis veiksmas negrįžtamas.
+                </p>
+              </div>
+            </div>
+          </div>
+          
           <!-- Error Message -->
           <div v-if="error" class="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div class="flex">
@@ -120,7 +141,7 @@
               Atšaukti
             </button>
             <button 
-              @click="importData" 
+              @click="confirmImport" 
               class="px-6 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
               :disabled="!canImport || isImporting"
             >
@@ -183,6 +204,30 @@
           </div>
         </div>
       </div>
+      
+      <!-- Confirmation Modal -->
+      <div v-if="showConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+          <h3 class="text-lg font-bold text-red-600 mb-2">Patvirtinkite duomenų pakeitimą</h3>
+          <p class="text-gray-700 mb-4">
+            Esate tikri, kad norite importuoti naujus duomenis? Visi esami el. pašto grupių duomenys bus ištrinti ir pakeisti naujais.
+          </p>
+          <div class="flex justify-end space-x-3">
+            <button 
+              @click="showConfirmation = false" 
+              class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              Atšaukti
+            </button>
+            <button 
+              @click="importData" 
+              class="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
+            >
+              Taip, pakeisti duomenis
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </template>
   
@@ -200,6 +245,7 @@
   const isImporting = ref(false);
   const isLoadingGroups = ref(false);
   const groups = ref([]);
+  const showConfirmation = ref(false);
   
   // Trigger file input click
   const triggerFileInput = () => {
@@ -334,6 +380,12 @@
     return parsedData.value.length > 0 && !error.value;
   });
   
+  // Show confirmation dialog
+  const confirmImport = () => {
+    if (!canImport.value) return;
+    showConfirmation.value = true;
+  };
+  
   // Fetch existing groups
   const fetchGroups = async () => {
     try {
@@ -367,6 +419,7 @@
     if (!canImport.value) return;
     
     try {
+      showConfirmation.value = false;
       isImporting.value = true;
       error.value = '';
       
@@ -388,7 +441,7 @@
       const result = await response.json();
       
       if (result.success) {
-        alert(`Duomenys sėkmingai importuoti.\n\nSukurta naujų grupių: ${result.stats.newGroups}\nImportuota el. paštų: ${result.stats.totalEmails}\nPraleista dublikatų: ${result.stats.duplicates}`);
+        alert(`Duomenys sėkmingai importuoti.\n\nSukurta grupių: ${result.stats.groups}\nImportuota el. paštų: ${result.stats.emails}`);
         
         // Reset form and refresh groups
         resetForm();
