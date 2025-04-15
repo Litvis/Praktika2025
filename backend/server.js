@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 import googleAuthRouter from './auth/google.js';
 import userManagementRoutes from './middleware/userManagement.js';
 import csvImportRoutes from './routes/csvImportRoutes.js';
-import { sendEmail } from './sendEmail.js';
+import { sendEmail } from './utils/sendEmail.js';
 
 dotenv.config();
 
