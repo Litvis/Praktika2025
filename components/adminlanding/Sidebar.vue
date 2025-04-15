@@ -102,29 +102,30 @@
       </RouterLink>
     </nav>
     
-    <!-- User Section -->
-    <div class="p-4 border-t border-gray-100 mt-auto">
-      <div class="flex items-center px-4 py-3">
-        <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-          <span class="text-sm font-medium text-gray-700">{{ userInitials }}</span>
-        </div>
-        <div>
-          <p class="font-medium text-gray-800">{{ userStore.user?.displayName || 'Vartotojas' }}</p>
-          <p class="text-xs text-gray-500">{{ userStore.user?.email || 'user@example.com' }}</p>
-        </div>
-      </div>
-      
-      <!-- Logout Button -->
-      <button 
-        @click="logout"
-        class="w-full mt-4 flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-        </svg>
-        Atsijungti
-      </button>
+<!-- User Section -->
+<div class="p-4 border-t border-gray-100 mt-auto">
+  <div class="flex items-center px-4 py-3">
+    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+      <span class="text-sm font-medium text-gray-700">{{ userInitials }}</span>
     </div>
+    <div>
+      <!-- Changed from hardcoded "Administratorius" to dynamic user name -->
+      <p class="font-medium text-gray-800">{{ userStore.user?.displayName || 'Vartotojas' }}</p>
+      <p class="text-xs text-gray-500">{{ userStore.user?.email || 'user@example.com' }}</p>
+    </div>
+  </div>
+  
+  <!-- Logout Button -->
+  <button 
+    @click="logout"
+    class="w-full mt-4 flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+    Atsijungti
+  </button>
+</div>
   </div>
 </template>
   

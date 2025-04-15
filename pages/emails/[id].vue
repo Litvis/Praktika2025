@@ -1,4 +1,3 @@
-
 <template>
   <!-- Loading overlay that appears immediately on page load -->
   <div v-if="isCheckingAccess" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
@@ -30,7 +29,35 @@
           <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
             <h1 class="font-bold text-2xl text-gray-800">{{ email.subject }}</h1>
             <div class="mt-2 text-sm text-gray-600 flex justify-between items-center">
-              <span>Gavėjas: {{ email.recipient_email }}</span>
+              <span>
+                Gavėjas: 
+                <!-- Show recipient count if more than 2 -->
+                <span v-if="recipientCount > 2" class="relative">
+                  <span>{{ recipientCount }} gavėjai</span>
+                  <span 
+                    @mouseover="showTooltip = true" 
+                    @mouseleave="showTooltip = false"
+                    class="ml-1 cursor-pointer text-gray-500 hover:text-gray-700"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                  <!-- Tooltip with all recipients -->
+                  <div 
+                    v-if="showTooltip" 
+                    class="absolute z-10 w-64 px-3 py-2 bg-gray-800 text-white text-xs rounded shadow-lg"
+                    style="bottom: 20px; left: 0;"
+                  >
+                    <div class="mb-1 font-medium">Visi gavėjai:</div>
+                    <div v-for="(recipient, index) in recipientsList" :key="index" class="truncate">
+                      {{ recipient }}
+                    </div>
+                  </div>
+                </span>
+                <!-- Show actual recipients if 2 or fewer -->
+                <span v-else>{{ email.recipient_email }}</span>
+              </span>
               <span>
                 Išsiųsta: 
                 {{ formatDay(new Date(email.created_at)) }} 
@@ -96,6 +123,9 @@ const route = useRoute();
 // Add state for access checking
 const isCheckingAccess = ref(true);
 
+// For tooltip
+const showTooltip = ref(false);
+
 // Enhanced admin access check function
 async function checkAdminAccess() {
   console.log('Checking admin access in component', {
@@ -150,6 +180,17 @@ const email = ref(null);
 const isLoading = ref(true);
 const error = ref(null);
 
+// Computed property for recipient list
+const recipientsList = computed(() => {
+  if (!email.value || !email.value.recipient_email) return [];
+  return email.value.recipient_email.split(',').map(email => email.trim());
+});
+
+// Computed property for recipient count
+const recipientCount = computed(() => {
+  return recipientsList.value.length;
+});
+
 // Fetch email details
 const fetchEmailDetails = async () => {
   try {
@@ -200,16 +241,6 @@ const formatEmailContent = (content) => {
 const goBack = () => {
   router.push('/dashboard');
 };
-
-// Fetch email details when component mounts
-onMounted(() => {
-  // Only fetch when access check completes
-  watch(() => isCheckingAccess.value, (newValue) => {
-    if (!newValue) {
-      fetchEmailDetails();
-    }
-  });
-});
 </script>
 
 <style scoped>
