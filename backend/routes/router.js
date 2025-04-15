@@ -32,8 +32,8 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/user-management',
-    name: 'UserManagement',
+    path: '/usersManagement',
+    name: 'usersManagement',
     component: () => import('../pages/UserManagement.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
   },
