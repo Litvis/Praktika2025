@@ -81,24 +81,24 @@
       <!-- CSV Management Link (NEW) -->
       <RouterLink 
         v-if="userStore.isAdmin"
-        to="/csv-management" 
+        to="/CsvManagement" 
         class="flex items-center px-4 py-3 mb-3 rounded-lg transition-all duration-200 group"
         :class="{ 
-          'bg-green-600 text-white shadow-md': $route.path === '/csv-management',
-          'text-gray-700 hover:bg-gray-100': $route.path !== '/csv-management'
+          'bg-green-600 text-white shadow-md': $route.path === '/CsvManagement',
+          'text-gray-700 hover:bg-gray-100': $route.path !== '/CsvManagement'
         }"
       >
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
           class="h-5 w-5 mr-3" 
-          :class="{ 'text-white': $route.path === '/csv-management', 'text-gray-500 group-hover:text-gray-700': $route.path !== '/csv-management' }"
+          :class="{ 'text-white': $route.path === '/CsvManagement', 'text-gray-500 group-hover:text-gray-700': $route.path !== '/csv-management' }"
           fill="none" 
           viewBox="0 0 24 24" 
           stroke="currentColor"
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <span class="font-medium">Grupių valdymas</span>
+        <span class="font-medium">CSV Įkėlimas</span>
       </RouterLink>
       
       <!-- Tools Link -->
