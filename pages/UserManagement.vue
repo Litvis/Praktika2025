@@ -1,7 +1,7 @@
 <template>
-    <UsersManagement />
+    <usersManagement />
   </template>
   
   <script setup>
-  import UsersManagement from '~/components/adminLanding/UsersManagement.vue';
+  import usersManagement from '~/components/adminlanding/usersManagement.vue';
   </script>
