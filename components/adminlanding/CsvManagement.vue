@@ -275,42 +275,71 @@
     }
   };
   
-  // Parse CSV file
-  const parseCSV = (file) => {
-    error.value = '';
-    parsedData.value = [];
-    
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        if (results.errors.length > 0) {
-          console.error('CSV parsing errors:', results.errors);
-          error.value = `Klaida analizuojant CSV: ${results.errors[0].message}`;
-          return;
-        }
-        
-        // Validate data format
-        if (!results.meta.fields.includes('Group') || !results.meta.fields.includes('Email')) {
-          error.value = 'CSV faile nerastas "Group" arba "Email" stulpelis.';
-          return;
-        }
-        
-        // Filter out invalid entries
-        const validData = results.data.filter(row => 
-          row.Group && row.Group.trim() !== '' && 
-          row.Email && row.Email.includes('@')
-        );
-        
-        if (validData.length === 0) {
-          error.value = 'CSV faile nerasta galiojančių duomenų.';
-          return;
-        }
-        
-        parsedData.value = validData;
+// Parse CSV file
+const parseCSV = (file) => {
+  error.value = '';
+  parsedData.value = [];
+  
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      if (results.errors.length > 0) {
+        console.error('CSV parsing errors:', results.errors);
+        error.value = `Klaida analizuojant CSV: ${results.errors[0].message}`;
+        return;
       }
-    });
-  };
+      
+      // Validate data format
+      if (!results.meta.fields.includes('Grupė') || !results.meta.fields.includes('Paštas')) {
+        error.value = 'CSV faile nerastas "Grupė" arba "Paštas" stulpelis/stulpeliai.';
+        return;
+      }
+      
+      // Filter out invalid entries and standardize data
+      const validData = results.data
+        .filter(row => 
+          row.Grupė && row.Grupė.trim() !== '' && 
+          row.Paštas && row.Paštas.includes('@')
+        )
+        .map(row => ({
+          Group: row.Grupė.trim(),
+          Email: row.Paštas.trim().toLowerCase() // Normalize emails to lowercase
+        }));
+      
+      if (validData.length === 0) {
+        error.value = 'CSV faile nerasta galiojančių duomenų.';
+        return;
+      }
+      
+      // Check for duplicates
+      const uniqueEntries = new Set();
+      const duplicates = [];
+      const finalData = [];
+      
+      for (const entry of validData) {
+        const key = `${entry.Group}|${entry.Email}`;
+        
+        if (uniqueEntries.has(key)) {
+          duplicates.push(entry);
+        } else {
+          uniqueEntries.add(key);
+          finalData.push(entry);
+        }
+      }
+      
+      // Display warning if duplicates were found
+      if (duplicates.length > 0) {
+        console.warn(`Rasti ${duplicates.length} duplikatai, jie bus ignoruojami.`);
+        warningMessage.value = `Rasta ${duplicates.length} pasikartojančių įrašų, kurie bus ignoruojami.`;
+      } else {
+        warningMessage.value = '';
+      }
+      
+      parsedData.value = finalData;
+    }
+  });
+};
   
   // Remove selected file
   const removeFile = () => {
