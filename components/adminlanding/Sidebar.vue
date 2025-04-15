@@ -58,7 +58,7 @@
       <!-- User Management Link (NEW) -->
       <RouterLink 
         v-if="userStore.isAdmin"
-        to="/user-management" 
+        to="/UserManagement" 
         class="flex items-center px-4 py-3 mb-3 rounded-lg transition-all duration-200 group"
         :class="{ 
           'bg-green-600 text-white shadow-md': $route.path === '/UserManagement',
