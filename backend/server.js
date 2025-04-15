@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 import googleAuthRouter from './auth/google.js';
 import userManagementRoutes from './middleware/userManagement.js';
 import csvImportRoutes from './routes/csvImportRoutes.js';
+import { sendEmail } from './sendEmail.js';
 
 dotenv.config();
 
@@ -214,70 +215,16 @@ app.use('/auth/*', async (req, res, next) => {
   }
 });
 
-// Improved route handler for sending emails
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
   console.log("📤 Incoming JSON request from frontend");
+  console.log("Recipients count:", recipient ? recipient.split(',').length : 0);
 
   try {
-    // Validate recipient email(s)
-    const recipientsArray = recipient
-      ? recipient.split(',').map(email => email.trim())
-      : [];
-
-    if (recipientsArray.length === 0 || recipientsArray.some(email => !email.includes('@'))) {
-      console.log("❌ Invalid recipient email");
-      return res.status(400).json({ error: 'Invalid recipient email(s)' });
-    }
-
-    // Check for API key
-    if (!process.env.SENDGRID_API_KEY) {
-      console.error("❌ SendGrid API key is missing");
-      return res.status(500).json({ error: 'Email service configuration error' });
-    }
-
-    const personalizations = recipientsArray.map(email => ({
-      to: [{ email }],
-      subject: subject
-    }));
+    // Send email using the improved handler
+    const emailResult = await sendEmail(recipient, subject, message, attachments);
     
-    const msg = {
-      personalizations: personalizations,
-      from: {
-        email: 'deividaslitvinenko4@gmail.com',
-        name: 'Užimtumo tarnyba'
-      },
-      content: [
-        {
-          type: 'text/plain',
-          value: message.replace(/<[^>]*>/g, '')
-        },
-        {
-          type: 'text/html',
-          value: message
-        }
-      ]
-    };
-
-    // Add attachments if they exist
-    if (attachments && attachments.length > 0) {
-      msg.attachments = attachments.map(attachment => ({
-        content: attachment.content, // Base64 content
-        filename: attachment.filename,
-        type: attachment.type,
-        disposition: attachment.disposition || 'attachment',
-        content_id: attachment.content_id ? `<${attachment.content_id}>` : undefined
-      }));
-    }
-
-    // Send email via SendGrid
-    const [response] = await sgMail.send(msg);
-    
-    // Log detailed response
-    console.log("✅ Email sent successfully with status code:", response.statusCode);
-    console.log("SendGrid headers:", response.headers);
-
-    // Save the email data to the database only if sending succeeded
+    // Save the email data to the database
     const attachmentNames = attachments 
       ? attachments.map(a => a.filename).join(', ') 
       : null;
@@ -292,24 +239,18 @@ app.post('/send-email', async (req, res) => {
     res.status(200).json({ 
       success: true, 
       message: 'Email sent and saved successfully',
-      statusCode: response.statusCode
+      statusCode: emailResult.results[0]?.statusCode || 200
     });
   } catch (error) {
     // Enhanced error logging
     console.error('❌ Error sending email:');
-    console.error('Error object:', error);
-    
-    if (error.response) {
-      console.error('SendGrid API response statusCode:', error.response.statusCode);
-      console.error('SendGrid API response body:', error.response.body);
-      console.error('SendGrid API response headers:', error.response.headers);
-    }
+    console.error('Error details:', error);
     
     // Return meaningful error to client
     res.status(500).json({ 
       error: 'Failed to send email', 
-      details: error.message,
-      sendGridError: error.response?.body || null
+      details: error.message || 'Unknown error',
+      sendGridError: error.sendGridError || null
     });
   }
 });
