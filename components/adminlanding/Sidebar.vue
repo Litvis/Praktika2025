@@ -55,7 +55,7 @@
         <span class="font-medium">Sąrašas</span>
       </RouterLink>
       
-      <!-- User Management Link (NEW) -->
+      <!-- User Management Link -->
       <RouterLink 
         v-if="userStore.isAdmin"
         to="/UserManagement" 
@@ -68,7 +68,7 @@
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
           class="h-5 w-5 mr-3" 
-          :class="{ 'text-white': $route.path === '/UserManagement', 'text-gray-500 group-hover:text-gray-700': $route.path !== '/user-management' }"
+          :class="{ 'text-white': $route.path === '/UserManagement', 'text-gray-500 group-hover:text-gray-700': $route.path !== '/UserManagement' }"
           fill="none" 
           viewBox="0 0 24 24" 
           stroke="currentColor"
@@ -76,6 +76,29 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
         <span class="font-medium">Vartotojų valdymas</span>
+      </RouterLink>
+      
+      <!-- CSV Management Link (NEW) -->
+      <RouterLink 
+        v-if="userStore.isAdmin"
+        to="/csv-management" 
+        class="flex items-center px-4 py-3 mb-3 rounded-lg transition-all duration-200 group"
+        :class="{ 
+          'bg-green-600 text-white shadow-md': $route.path === '/csv-management',
+          'text-gray-700 hover:bg-gray-100': $route.path !== '/csv-management'
+        }"
+      >
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          class="h-5 w-5 mr-3" 
+          :class="{ 'text-white': $route.path === '/csv-management', 'text-gray-500 group-hover:text-gray-700': $route.path !== '/csv-management' }"
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <span class="font-medium">Grupių valdymas</span>
       </RouterLink>
       
       <!-- Tools Link -->
@@ -102,30 +125,29 @@
       </RouterLink>
     </nav>
     
-<!-- User Section -->
-<div class="p-4 border-t border-gray-100 mt-auto">
-  <div class="flex items-center px-4 py-3">
-    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-      <span class="text-sm font-medium text-gray-700">{{ userInitials }}</span>
+    <!-- User Section -->
+    <div class="p-4 border-t border-gray-100 mt-auto">
+      <div class="flex items-center px-4 py-3">
+        <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+          <span class="text-sm font-medium text-gray-700">{{ userInitials }}</span>
+        </div>
+        <div>
+          <p class="font-medium text-gray-800">{{ userStore.user?.displayName || 'Vartotojas' }}</p>
+          <p class="text-xs text-gray-500">{{ userStore.user?.email || 'user@example.com' }}</p>
+        </div>
+      </div>
+      
+      <!-- Logout Button -->
+      <button 
+        @click="logout"
+        class="w-full mt-4 flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        Atsijungti
+      </button>
     </div>
-    <div>
-      <!-- Changed from hardcoded "Administratorius" to dynamic user name -->
-      <p class="font-medium text-gray-800">{{ userStore.user?.displayName || 'Vartotojas' }}</p>
-      <p class="text-xs text-gray-500">{{ userStore.user?.email || 'user@example.com' }}</p>
-    </div>
-  </div>
-  
-  <!-- Logout Button -->
-  <button 
-    @click="logout"
-    class="w-full mt-4 flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
-  >
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg>
-    Atsijungti
-  </button>
-</div>
   </div>
 </template>
   
