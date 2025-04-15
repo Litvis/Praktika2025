@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import googleAuthRouter from './auth/google.js';
+import userManagementRoutes from './routes/userManagement.js';
 
 dotenv.config();
 
@@ -75,6 +76,7 @@ app.use(passport.session());
 // Routes
 app.use(googleAuthRouter);
 app.use(authRoutes);
+app.use(userManagementRoutes);
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');

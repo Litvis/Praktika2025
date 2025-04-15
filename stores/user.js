@@ -5,6 +5,7 @@ export const useUserStore = defineStore('user', () => {
   // Reactive state
   const user = ref(null);
   const isAdmin = ref(false);
+  const isPending = ref(false); // New state for pending status
   const isAuthenticated = ref(false);
   const isLoading = ref(true);
   const lastCheck = ref(0);
@@ -15,6 +16,7 @@ export const useUserStore = defineStore('user', () => {
     console.log('Setting user data:', userData);
     user.value = userData;
     isAdmin.value = userData?.role === 'admin';
+    isPending.value = userData?.role === 'pending'; // Set pending status
     isAuthenticated.value = true;
     isLoading.value = false;
     lastCheck.value = Date.now();
@@ -25,6 +27,7 @@ export const useUserStore = defineStore('user', () => {
     console.log('Clearing user data');
     user.value = null;
     isAdmin.value = false;
+    isPending.value = false; // Reset pending status
     isAuthenticated.value = false;
     isLoading.value = false; // Make sure to set loading to false
     lastCheck.value = Date.now();
@@ -93,6 +96,40 @@ export const useUserStore = defineStore('user', () => {
       return false;
     }
   }
+  
+  // Check user approval status
+  async function checkApprovalStatus() {
+    try {
+      console.log('Checking user approval status');
+      const config = useRuntimeConfig();
+      const apiUrl = `${config.public.apiBase}/api/check-approval-status`;
+      
+      const response = await $fetch(apiUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.success) {
+        if (response.approved && user.value) {
+          console.log('User is approved with role:', response.role);
+          // Update user role if it's changed
+          if (user.value.role !== response.role) {
+            user.value.role = response.role;
+            isAdmin.value = response.role === 'admin';
+            isPending.value = false;
+          }
+        }
+        return response.approved;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error checking approval status:', err);
+      return false;
+    }
+  }
 
   // Check for authentication immediately
   onMounted(() => {
@@ -104,13 +141,15 @@ export const useUserStore = defineStore('user', () => {
   return {
     user,
     isAdmin,
+    isPending,
     isAuthenticated,
     isLoading,
     error,
     setUser,
     clearUser,
     fetchUserProfile,
-    logout
+    logout,
+    checkApprovalStatus
   };
 });
 
@@ -120,7 +159,11 @@ export const useUser = () => {
   
   // Additional computed properties
   const isLoggedIn = computed(() => userStore.isAuthenticated);
-  const userRole = computed(() => userStore.isAdmin ? 'admin' : 'worker');
+  const userRole = computed(() => {
+    if (userStore.isAdmin) return 'admin';
+    if (userStore.isPending) return 'pending';
+    return 'worker';
+  });
   
   return {
     ...toRefs(userStore),

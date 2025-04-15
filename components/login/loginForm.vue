@@ -18,7 +18,7 @@
           <!-- Welcome Text -->
           <h1 class="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">Sveiki atvykę</h1>
           <p class="text-gray-600 text-center mb-8 max-w-sm">
-            Prisijunkite su įmonės Google paskyra, kad galėtumėte tęsti
+            Srautinio laiškų siuntimo įrankis
           </p>
           
           <!-- Google Sign-in Button -->
@@ -26,11 +26,8 @@
             href="https://praktika2025.onrender.com/auth/google" 
             class="flex items-center justify-center w-full py-3 px-4 rounded-lg border border-gray-300 bg-white text-gray-800 font-medium shadow-sm hover:shadow transition-all duration-200 group"
           >
-            <Icon 
-              icon="flat-color-icons:google" 
-              class="w-6 h-6 mr-3 group-hover:scale-110 transition-transform duration-200" 
-            />
-            <span>Tęskite su Google</span>
+
+            <span>Prisijungti</span>
           </a>
         </div>
       </div>

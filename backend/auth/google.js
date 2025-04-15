@@ -24,7 +24,7 @@ passport.serializeUser((user, done) => {
     done(null, {
       id: user.id || null,
       email: email,
-      role: user.role || 'worker'
+      role: user.role || 'pending' // Default to pending instead of worker
     });
   } catch (error) {
     done(error);
@@ -51,7 +51,7 @@ passport.deserializeUser(async (userData, done) => {
         },
         displayName: user.name,
         emails: [{ value: user.email }],
-        role: user.role || 'worker'
+        role: user.role || 'pending' // Default to pending instead of worker
       });
     } else {
       done(new Error('User not found'));
@@ -61,7 +61,7 @@ passport.deserializeUser(async (userData, done) => {
   }
 });
 
-// In your google.js file
+// Modify the Google OAuth strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -84,13 +84,13 @@ passport.use(new GoogleStrategy({
     );
     
     if (userResult.rows.length === 0) {
-      // User doesn't exist - CREATE NEW USER
-      console.log(`Creating new user for email: ${userEmail}`);
+      // User doesn't exist - CREATE NEW USER with PENDING status
+      console.log(`Creating new user for email: ${userEmail} with pending status`);
       const displayName = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
       
       const newUserResult = await pool.query(
         'INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING *',
-        [userEmail, displayName, 'worker'] // New users get worker role by default
+        [userEmail, displayName, 'pending'] // New users get pending role by default
       );
       
       if (newUserResult.rows.length === 0) {
@@ -108,7 +108,7 @@ passport.use(new GoogleStrategy({
           familyName: profile.name?.familyName || ''
         },
         displayName: displayName,
-        role: newUser.role || 'worker'
+        role: newUser.role || 'pending'
       };
       
       return done(null, normalizedUser);
@@ -127,7 +127,7 @@ passport.use(new GoogleStrategy({
         familyName: profile.name?.familyName || ''
       },
       displayName: user.name || profile.displayName,
-      role: user.role || 'worker'
+      role: user.role || 'pending'
     };
     
     return done(null, normalizedUser);
@@ -137,16 +137,68 @@ passport.use(new GoogleStrategy({
   }
 }));
 
+// Modified callback route to handle redirects based on approval status
+router.get('/auth/google/callback', (req, res, next) => {
+  passport.authenticate('google', async (err, user, info) => {
+    if (err) {
+      console.error('Authentication error:', err);
+      return next(err);
+    }
+    
+    if (!user) {
+      console.error('User not found or not authorized');
+      return res.redirect('https://praktika2025.vercel.app/login?error=unauthorized');
+    }
+
+    try {
+      // Log user information before login
+      console.log('User found, attempting login:', {
+        id: user.id,
+        email: user.emails?.[0]?.value,
+        role: user.role
+      });
+
+      // Perform login with session
+      req.login(user, { session: true }, (loginErr) => {
+        if (loginErr) {
+          console.error('Login error:', loginErr);
+          return next(loginErr);
+        }
+
+        // Log session after login
+        console.log('Session after login:', req.session);
+        console.log('Session ID:', req.sessionID);
+        console.log('Is authenticated:', req.isAuthenticated());
+
+        // Set a successful login cookie with appropriate settings
+        res.cookie('loggedIn', 'true', {
+          httpOnly: false, // Allow JavaScript access
+          secure: true,    // HTTPS only
+          sameSite: 'none', // Allow cross-site
+          maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        // Redirect based on role and approval status
+        if (user.role === 'pending') {
+          return res.redirect('https://praktika2025.vercel.app/authorising');
+        } else if (user.role === 'admin') {
+          return res.redirect('https://praktika2025.vercel.app/irankis');
+        } else if (user.role === 'worker') {
+          return res.redirect('https://praktika2025.vercel.app/irankis');
+        } else {
+          return res.redirect('https://praktika2025.vercel.app/login');
+        }
+      });
+    } catch (error) {
+      console.error('Error in OAuth callback:', error);
+      return res.redirect('https://praktika2025.vercel.app/login?error=server');
+    }
+  })(req, res, next);
+});
+
 // Google OAuth routes
 router.get('/auth/google', 
   passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-router.get('/auth/google/callback', 
-  passport.authenticate('google', { 
-    failureRedirect: '/login',
-    successRedirect: 'https://praktika2025.vercel.app/irankis'
-  })
 );
 
 // Logout route

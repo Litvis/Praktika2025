@@ -191,7 +191,7 @@ async function checkAdminAccess() {
   
   // If not admin, redirect immediately
   if (!userStore.isAdmin) {
-    console.log('Access denied - not an admin');
+    console.log('Prieeiga negalima - neturi administratoriaus teisių');
     router.push('/unauthorised');
     return;
   }

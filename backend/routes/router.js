@@ -1,4 +1,3 @@
-// If using Vue Router directly, in your router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
 
 const routes = [
@@ -18,18 +17,30 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../pages/Dashboard.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true } // Add requiresAdmin: true 
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/emails/:id',
     name: 'EmailDetail',
     component: () => import('../pages/EmailDetail.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true } // Add requiresAdmin: true
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/irankis',
     name: 'Irankis',
     component: () => import('../pages/Irankis.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/user-management',
+    name: 'UserManagement',
+    component: () => import('../pages/UserManagement.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/authorising',
+    name: 'Authorising',
+    component: () => import('../pages/Authorising.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -66,6 +77,11 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth && !userStore.isAuthenticated) {
     // Redirect to login if not authenticated
     return next('/login');
+  }
+  
+  // Redirect pending users to authorising page
+  if (userStore.isPending && to.path !== '/authorising' && to.path !== '/login') {
+    return next('/authorising');
   }
   
   if (to.meta.requiresAdmin && !userStore.isAdmin) {
