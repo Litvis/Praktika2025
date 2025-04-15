@@ -3,5 +3,5 @@
   </template>
   
   <script setup>
-  import UsersManagement from '~/components/UsersManagement.vue';
+  import UsersManagement from '~/components/adminLanding/UsersManagement.vue';
   </script>
