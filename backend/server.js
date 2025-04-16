@@ -651,6 +651,14 @@ async function startServer() {
     await ensureSessionTableExists();
     await ensureUsersTableExists();
 
+    console.log('CORS origin configuration:', process.env.FRONTEND_URL);
+    console.log('Full CORS configuration:', {
+      origin: process.env.FRONTEND_URL,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization']
+    });
+
     // Set up SendGrid 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
