@@ -4,7 +4,7 @@ import GoogleStrategy from 'passport-google-oauth2';
 import dotenv from 'dotenv';
 import { pool } from '../db.js';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 // Create the router
 const router = express.Router();
