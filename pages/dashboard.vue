@@ -257,7 +257,7 @@ const fetchEmails = async () => {
     }
     
     // Fetch data from API
-    const response = await fetch(`${apiBase}/api/emails/recent?${params.toString()}`);
+    const response = await fetch(`${apiBase.value}/api/emails/recent?${params.toString()}`);
     const data = await response.json();
     
     if (data.success) {
@@ -340,7 +340,7 @@ const viewEmail = (id) => {
 const exportEmails = async () => {
   try {
     // Fetch all emails for export (without pagination)
-    const response = await fetch(`${apiBase}/api/emails/recent?limit=1000&dateFilter=${dateFilter.value}`);
+    const response = await fetch(`${apiBase.value}/api/emails/recent?limit=1000&dateFilter=${dateFilter.value}`);
     const data = await response.json();
     
     if (data.success) {

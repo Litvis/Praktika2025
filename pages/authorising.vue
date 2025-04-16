@@ -65,7 +65,7 @@
       isChecking.value = true;
       
       // Call the API to check user status
-      const response = await fetch(`${apiBase}/api/user/profile`, {
+      const response = await fetch(`${apiBase.value}/api/user/profile`, {
       credentials: 'include'
     });
       
@@ -99,7 +99,7 @@
   const logout = async () => {
     try {
       // Redirect to the backend logout endpoint
-      window.location.href = `${apiBase}/logout`;
+      window.location.href = `${apiBase.value}/logout`;
       
       // Clear local user state
       userStore.clearUser();

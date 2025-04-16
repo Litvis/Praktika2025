@@ -51,7 +51,7 @@
         <div class="w-full space-y-4">
           <!-- Company Email Login -->
           <a 
-  :href="`${apiBase}/auth/google`" 
+  :href="`${apiBase.value}/auth/google`" 
   class="flex items-center justify-center w-full py-3 px-4 rounded-lg border border-gray-300 bg-white text-gray-800 font-medium shadow-sm hover:shadow transition-all duration-200 group"
 >
             <svg class="w-5 h-5 mr-2 text-gray-700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
@@ -75,7 +75,7 @@
           
           <!-- Personal Email Login -->
           <a 
-  :href="`${apiBase}/auth/google-alt`" 
+  :href="`${apiBase.value}/auth/google-alt`" 
   class="flex items-center justify-center w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium shadow-sm hover:shadow transition-all duration-200 group"
 >
             <svg class="w-5 h-5 mr-2 text-gray-700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">

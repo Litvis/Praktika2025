@@ -154,6 +154,8 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import DOMPurify from 'dompurify';
 
+const config = useRuntimeConfig();
+const apiBase = config.public.apiBase;
 const router = useRouter();
 const userName = ref('Administratoriau');
 const dashboardStats = ref({
@@ -207,7 +209,7 @@ const getTimeAgo = (timestamp) => {
 // Function to fetch dashboard data
 const fetchDashboardData = async () => {
   try {
-    const response = await fetch('https://praktika2025.onrender.com/api/dashboard/stats');
+    const response = await fetch(`${apiBase.value}/api/dashboard/stats`);
     const data = await response.json();
     
     if (data.success) {

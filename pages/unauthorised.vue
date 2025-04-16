@@ -52,7 +52,7 @@
   const logout = async () => {
     try {
       // Redirect to the backend logout endpoint
-      window.location.href = '${apiBase}/logout';
+      window.location.href = `${apiBase.value}/logout`;
       
       // Clear local user state
       userStore.clearUser();

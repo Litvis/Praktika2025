@@ -201,7 +201,7 @@ const fetchEmailDetails = async () => {
     
     console.log('Fetching email details for ID:', emailId);
     
-    const response = await $fetch(`${apiBase}/api/emails/${emailId}`);
+    const response = await $fetch(`${apiBase.value}/api/emails/${emailId}`);
     
     console.log('Received response:', response);
     

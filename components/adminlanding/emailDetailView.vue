@@ -95,7 +95,7 @@
       isLoading.value = true;
       const emailId = route.params.id;
       
-      const response = await fetch(`https://praktika2025.onrender.com/api/emails/${emailId}`);
+      const response = await fetch(`${apiBase.value}/api/emails/${emailId}`);
       const data = await response.json();
       
       if (data.success) {

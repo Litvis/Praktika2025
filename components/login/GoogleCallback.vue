@@ -13,14 +13,18 @@
       
       if (code) {
         try {
-          // Send the code to the backend to complete the authentication
-          const response = await fetch('https://praktika2025.onrender.com/auth/google/callback', {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include', // Include cookies (for session management)
-          });
+
+        const config = useRuntimeConfig();
+        const apiBase = config.public.apiBase;
+
+        // Send the code to the backend to complete the authentication
+        const response = await fetch(`${apiBase.value}/auth/google/callback`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // Include cookies (for session management)
+        });
   
           // If successful, redirect to the dashboard
           if (response.ok) {
