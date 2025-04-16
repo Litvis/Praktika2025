@@ -204,7 +204,7 @@
       }
       
       // Fetch data from API
-      const response = await fetch(`${apiBase.value}/api/emails/recent?${params.toString()}`);
+      const response = await fetch(`${apiBase}/api/emails/recent?${params.toString()}`);
       const data = await response.json();
       
       if (data.success) {
@@ -300,7 +300,7 @@
         params.append('dateFilter', dateFilter.value);
       }
       
-      const response = await fetch(`${apiBase.value}/api/emails/recent?${params.toString()}`);
+      const response = await fetch(`${apiBase}/api/emails/recent?${params.toString()}`);
       const data = await response.json();
       
       if (data.success) {

@@ -209,7 +209,7 @@ const getTimeAgo = (timestamp) => {
 // Function to fetch dashboard data
 const fetchDashboardData = async () => {
   try {
-    const response = await fetch(`${apiBase.value}/api/dashboard/stats`);
+    const response = await fetch(`${apiBase}/api/dashboard/stats`);
     const data = await response.json();
     
     if (data.success) {
