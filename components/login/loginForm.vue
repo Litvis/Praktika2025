@@ -75,7 +75,7 @@
           
           <!-- Personal Email Login -->
           <a 
-  :href="`${apiBase.value}/auth/google-alt`" 
+  :href="`${apiBase}/auth/google-alt`" 
   class="flex items-center justify-center w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium shadow-sm hover:shadow transition-all duration-200 group"
 >
             <svg class="w-5 h-5 mr-2 text-gray-700" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
