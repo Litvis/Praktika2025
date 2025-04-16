@@ -45,7 +45,7 @@ const sessionStore = new PgStore({
 });
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:3000'],
+  origin: process.env.FRONTEND_URL,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -81,7 +81,7 @@ app.use(authRoutes);
 app.use(userManagementRoutes);
 app.use(csvImportRoutes);
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 
 app.locals.config = {
