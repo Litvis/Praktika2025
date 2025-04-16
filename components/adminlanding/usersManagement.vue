@@ -230,7 +230,7 @@
       }
       
       // Fetch data from API
-      const response = await fetch(`${apiBase.value}/api/admin/users?${params.toString()}`, {
+      const response = await fetch(`${apiBase}/api/admin/users?${params.toString()}`, {
         credentials: 'include'
       });
       
@@ -276,7 +276,7 @@
   // User actions
   const approveUser = async (userId) => {
     try {
-      const response = await fetch(`${apiBase.value}/api/admin/approve-user`, {
+      const response = await fetch(`${apiBase}/api/admin/approve-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -304,7 +304,7 @@
   
   const promoteUser = async (userId) => {
     try {
-      const response = await fetch(`${apiBase.value}/api/admin/promote-user`, {
+      const response = await fetch(`${apiBase}/api/admin/promote-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -332,7 +332,7 @@
   
   const demoteUser = async (userId) => {
     try {
-      const response = await fetch(`${apiBase.value}/api/admin/demote-user`, {
+      const response = await fetch(`${apiBase}/api/admin/demote-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -362,7 +362,7 @@
     if (!confirm('Ar tikrai norite ištrinti šį vartotoją?')) return;
     
     try {
-      const response = await fetch(`${apiBase.value}/api/admin/delete-user`, {
+      const response = await fetch(`${apiBase}/api/admin/delete-user`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
