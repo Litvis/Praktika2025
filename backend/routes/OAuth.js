@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Google OAuth callback route with role-based redirection
 router.get('/auth/google/callback', (req, res, next) => {
-  const { FRONTEND_URL } = req.app.locals.config;
+  const FRONTEND_URL = process.env.FRONTEND_URL;
 
   passport.authenticate('google', async (err, user, info) => {
     if (err) {
@@ -66,7 +66,7 @@ router.get('/auth/google/callback', (req, res, next) => {
 // Login route
 router.get('/login', (req, res) => {
   // If already authenticated, redirect based on role
-  const { FRONTEND_URL } = req.app.locals.config;
+  const FRONTEND_URL = process.env.FRONTEND_URL;
   if (req.isAuthenticated()) {
     const user = req.user;
     console.log('User already authenticated:', user);
@@ -143,7 +143,7 @@ router.get('/api/check-auth', (req, res) => {
 
 // Logout route
 router.get('/logout', (req, res, next) => {
-  const { FRONTEND_URL } = req.app.locals.config;
+  const FRONTEND_URL = process.env.FRONTEND_URL;
   console.log('Logout request received');
   // Clear the session
   req.logout((err) => {

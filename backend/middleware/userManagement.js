@@ -14,6 +14,7 @@ const requireAdmin = (req, res, next) => {
 
 // Get all users with pagination and filtering
 router.get('/api/admin/users', requireAdmin, async (req, res) => {
+  const { FRONTEND_URL } = req.app.locals.config;
   try {
     const limit = parseInt(req.query.limit) || 10;
     const offset = parseInt(req.query.offset) || 0;
@@ -88,6 +89,7 @@ router.get('/api/admin/users', requireAdmin, async (req, res) => {
 
 // Approve a pending user (change role from 'pending' to 'worker')
 router.post('/api/admin/approve-user', requireAdmin, async (req, res) => {
+  const FRONTEND_URL = process.env.FRONTEND_URL;
   try {
     const { id } = req.body;
     
@@ -114,6 +116,7 @@ router.post('/api/admin/approve-user', requireAdmin, async (req, res) => {
 
 // Promote user from worker to admin
 router.post('/api/admin/promote-user', requireAdmin, async (req, res) => {
+  const { FRONTEND_URL } = req.app.locals.config;
   try {
     const { id } = req.body;
     

@@ -173,6 +173,7 @@ router.get('/auth/google-alt',
 // Google OAuth callback handler
 router.get('/auth/google/callback', (req, res, next) => {
   console.log('Google OAuth callback received');
+  const FRONTEND_URL = process.env.FRONTEND_URL;
   
   passport.authenticate('google', async (err, user, info) => {
     if (err) {
@@ -221,18 +222,18 @@ router.get('/auth/google/callback', (req, res, next) => {
 
         // Redirect based on role and approval status
         if (user.role === 'pending') {
-          return res.redirect('${FRONTEND_URL}/authorising');
+          return res.redirect(`${FRONTEND_URL}/authorising`);
         } else if (user.role === 'admin') {
-          return res.redirect('${FRONTEND_URL}/irankis');
+          return res.redirect(`${FRONTEND_URL}/irankis`);
         } else if (user.role === 'worker') {
-          return res.redirect('${FRONTEND_URL}/irankis');
+          return res.redirect(`${FRONTEND_URL}/irankis`);
         } else {
-          return res.redirect('${FRONTEND_URL}/login');
+          return res.redirect(`${FRONTEND_URL}/login`);
         }
       });
     } catch (error) {
       console.error('Error in OAuth callback:', error);
-      return res.redirect('${FRONTEND_URL}/login?error=server');
+      return res.redirect(`${FRONTEND_URL}/login?error=server`);
     }
   })(req, res, next);
 });
