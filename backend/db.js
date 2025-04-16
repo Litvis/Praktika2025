@@ -1,33 +1,16 @@
 import pkg from 'pg';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Explicitly set the path to the .env file in the backend directory
+const envPath = path.resolve(__dirname, '.env');
 
-// Try multiple potential paths
-const possiblePaths = [
-  path.resolve(__dirname, '../../.env'),     // Project root from backend
-  path.resolve(process.cwd(), '.env'),       // Current working directory
-  path.resolve(__dirname, '.env')            // Current directory
-];
+console.log('Attempting to load .env from:', envPath);
+console.log('File exists:', fs.existsSync(envPath));
 
-let loadedPath = null;
-for (const envPath of possiblePaths) {
-  console.log(`Checking path: ${envPath}`);
-  if (fs.existsSync(envPath)) {
-    loadedPath = envPath;
-    console.log(`✅ Found .env at: ${loadedPath}`);
-    dotenv.config({ path: loadedPath });
-    break;
-  }
-}
-
-if (!loadedPath) {
-  console.warn('❌ No .env file found. Using environment variables from the system.');
-}
+// Load the environment variables
+dotenv.config({ path: envPath });
 
 const { Pool } = pkg;
 
@@ -40,7 +23,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 
-// Debugging logs
+// Extensive logging
 console.log('Environment Variables:');
 console.log('Current Working Directory:', process.cwd());
 console.log('__dirname:', __dirname);
