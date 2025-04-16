@@ -7,14 +7,27 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Absolute path to the .env file at the project root
-const envPath = path.resolve(process.cwd(), '.env');
+// Try multiple potential paths
+const possiblePaths = [
+  path.resolve(__dirname, '../../.env'),     // Project root from backend
+  path.resolve(process.cwd(), '.env'),       // Current working directory
+  path.resolve(__dirname, '.env')            // Current directory
+];
 
-console.log('Attempting to load .env from:', envPath);
-console.log('File exists:', fs.existsSync(envPath));
+let loadedPath = null;
+for (const envPath of possiblePaths) {
+  console.log(`Checking path: ${envPath}`);
+  if (fs.existsSync(envPath)) {
+    loadedPath = envPath;
+    console.log(`✅ Found .env at: ${loadedPath}`);
+    dotenv.config({ path: loadedPath });
+    break;
+  }
+}
 
-// Load the environment variables
-dotenv.config({ path: envPath });
+if (!loadedPath) {
+  console.warn('❌ No .env file found. Using environment variables from the system.');
+}
 
 const { Pool } = pkg;
 
@@ -27,7 +40,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 
-// Extensive logging
+// Debugging logs
 console.log('Environment Variables:');
 console.log('Current Working Directory:', process.cwd());
 console.log('__dirname:', __dirname);
