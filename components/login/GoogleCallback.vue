@@ -18,7 +18,7 @@
         const apiBase = config.public.apiBase;
 
         // Send the code to the backend to complete the authentication
-        const response = await fetch(`${apiBase.value}/auth/google/callback`, {
+        const response = await fetch(`${apiBase}/auth/google/callback`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
