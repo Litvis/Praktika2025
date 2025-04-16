@@ -41,6 +41,8 @@
   
   const userStore = useUserStore();
   const router = useRouter();
+  const config = useRuntimeConfig();
+  const apiBase = config.public.apiBase;
   
   const goToAllowedPage = () => {
     // Redirect to irankis page, which is accessible for all authenticated users
@@ -50,7 +52,7 @@
   const logout = async () => {
     try {
       // Redirect to the backend logout endpoint
-      window.location.href = 'https://praktika2025.onrender.com/logout';
+      window.location.href = '${apiBase}/logout';
       
       // Clear local user state
       userStore.clearUser();

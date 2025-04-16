@@ -119,6 +119,8 @@ import DOMPurify from 'dompurify';
 const userStore = useUserStore();
 const router = useRouter();
 const route = useRoute();
+const config = useRuntimeConfig();
+const apiBase = config.public.apiBase;
 
 // Add state for access checking
 const isCheckingAccess = ref(true);
@@ -199,7 +201,7 @@ const fetchEmailDetails = async () => {
     
     console.log('Fetching email details for ID:', emailId);
     
-    const response = await $fetch(`https://praktika2025.onrender.com/api/emails/${emailId}`);
+    const response = await $fetch(`${apiBase}/api/emails/${emailId}`);
     
     console.log('Received response:', response);
     

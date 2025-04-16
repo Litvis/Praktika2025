@@ -189,7 +189,7 @@ router.get('/auth/google/callback', (req, res, next) => {
         errorType = 'domain_not_allowed';
       }
       
-      return res.redirect(`https://praktika2025.vercel.app/login?error=${errorType}`);
+      return res.redirect(`${FRONTEND_URL}/login?error=${errorType}`);
     }
 
     try {
@@ -221,18 +221,18 @@ router.get('/auth/google/callback', (req, res, next) => {
 
         // Redirect based on role and approval status
         if (user.role === 'pending') {
-          return res.redirect('https://praktika2025.vercel.app/authorising');
+          return res.redirect('${FRONTEND_URL}/authorising');
         } else if (user.role === 'admin') {
-          return res.redirect('https://praktika2025.vercel.app/irankis');
+          return res.redirect('${FRONTEND_URL}/irankis');
         } else if (user.role === 'worker') {
-          return res.redirect('https://praktika2025.vercel.app/irankis');
+          return res.redirect('${FRONTEND_URL}/irankis');
         } else {
-          return res.redirect('https://praktika2025.vercel.app/login');
+          return res.redirect('${FRONTEND_URL}/login');
         }
       });
     } catch (error) {
       console.error('Error in OAuth callback:', error);
-      return res.redirect('https://praktika2025.vercel.app/login?error=server');
+      return res.redirect('${FRONTEND_URL}/login?error=server');
     }
   })(req, res, next);
 });

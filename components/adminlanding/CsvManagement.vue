@@ -432,7 +432,7 @@ const parseCSV = (file) => {
     try {
       isLoadingGroups.value = true;
       
-      const response = await fetch('https://praktika2025.onrender.com/api/groups-with-counts', {
+      const response = await fetch('${apiBase}/api/groups-with-counts', {
         credentials: 'include'
       });
       
@@ -464,7 +464,7 @@ const parseCSV = (file) => {
       isImporting.value = true;
       error.value = '';
       
-      const response = await fetch('https://praktika2025.onrender.com/api/import-csv', {
+      const response = await fetch('${apiBase}/api/import-csv', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

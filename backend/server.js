@@ -45,7 +45,7 @@ const sessionStore = new PgStore({
 });
 
 app.use(cors({
-  origin: ['https://praktika2025.vercel.app', 'http://localhost:3000'], // Add your frontend URLs
+  origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -65,7 +65,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    secure: true, // For production, always use HTTPS
+    secure: process.env.NODE_ENV === 'production' || process.env.ENABLE_HTTPS === 'true',
     httpOnly: true,
     sameSite: 'none' // Critical for cross-domain requests
   }
@@ -80,6 +80,15 @@ app.use(googleAuthRouter);
 app.use(authRoutes);
 app.use(userManagementRoutes);
 app.use(csvImportRoutes);
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+
+app.locals.config = {
+  FRONTEND_URL,
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  API_VERSION: process.env.API_VERSION || 'v1',
+};
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -222,7 +231,13 @@ app.post('/send-email', async (req, res) => {
 
   try {
     // Send email using the improved handler
-    const emailResult = await sendEmail(recipient, subject, message, attachments);
+    const emailResult = await sendEmail(
+      recipient, 
+      subject, 
+      message, 
+      attachments,
+      req.app.locals.config  // Pass the config from app.locals
+    );
     
     // Save the email data to the database
     const attachmentNames = attachments 
@@ -504,7 +519,7 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
     const msg = {
       personalizations: personalizations,
       from: {
-        email: 'deividaslitvinenko4@gmail.com',
+        email: process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com',
         name: 'Užimtumo tarnyba'
       },
       content: [

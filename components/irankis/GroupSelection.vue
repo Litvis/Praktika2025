@@ -64,6 +64,8 @@ const selectedGroupEmails = ref([]);
 const isLoading = ref(true);
 const isLoadingEmails = ref(false);
 const error = ref(null);
+const config = useRuntimeConfig();
+const apiBase = config.public.apiBase;
 
 // Fetch all available groups from the database
 const fetchGroups = async () => {
@@ -71,7 +73,7 @@ const fetchGroups = async () => {
     isLoading.value = true;
     error.value = null;
     
-    const response = await fetch('https://praktika2025.onrender.com/api/groups', {
+    const response = await fetch(`${apiBase}/api/groups`, {
       credentials: 'include' // Important for authenticated requests
     });
     
@@ -107,7 +109,7 @@ const fetchGroupEmails = async (groupId) => {
     isLoadingEmails.value = true;
     error.value = null;
     
-    const response = await fetch(`https://praktika2025.onrender.com/api/groups/${groupId}/emails`, {
+    const response = await fetch(`${apiBase}/api/groups/${groupId}/emails`, {
       credentials: 'include' // Important for authenticated requests
     });
     

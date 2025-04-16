@@ -6,6 +6,8 @@ const router = express.Router();
 
 // Google OAuth callback route with role-based redirection
 router.get('/auth/google/callback', (req, res, next) => {
+  const { FRONTEND_URL } = req.app.locals.config;
+
   passport.authenticate('google', async (err, user, info) => {
     if (err) {
       console.error('Authentication error:', err);
@@ -14,7 +16,7 @@ router.get('/auth/google/callback', (req, res, next) => {
     
     if (!user) {
       console.error('User not found or not authorized');
-      return res.redirect('https://praktika2025.vercel.app/login?error=unauthorized');
+      return res.redirect(`${FRONTEND_URL}/login?error=unauthorized`);
     }
 
     try {
@@ -47,16 +49,16 @@ router.get('/auth/google/callback', (req, res, next) => {
 
         // Redirect based on role from the database
         if (user.role === 'admin') {
-          return res.redirect('https://praktika2025.vercel.app/irankis');
+          return res.redirect(`${FRONTEND_URL}/irankis`);
         } else if (user.role === 'worker') {
-          return res.redirect('https://praktika2025.vercel.app/irankis');
+          return res.redirect(`${FRONTEND_URL}/irankis`);
         } else {
-          return res.redirect('https://praktika2025.vercel.app/login');
+          return res.redirect(`${FRONTEND_URL}/login`);
         }
       });
     } catch (error) {
       console.error('Error in OAuth callback:', error);
-      return res.redirect('https://praktika2025.vercel.app/login?error=server');
+      return res.redirect(`${FRONTEND_URL}/login?error=server`);
     }
   })(req, res, next);
 });
@@ -64,14 +66,15 @@ router.get('/auth/google/callback', (req, res, next) => {
 // Login route
 router.get('/login', (req, res) => {
   // If already authenticated, redirect based on role
+  const { FRONTEND_URL } = req.app.locals.config;
   if (req.isAuthenticated()) {
     const user = req.user;
     console.log('User already authenticated:', user);
     
     if (user.role === 'admin') {
-      return res.redirect('https://praktika2025.vercel.app/irankis');
+      return res.redirect(`${FRONTEND_URL}/irankis`);
     }
-    return res.redirect('https://praktika2025.vercel.app/irankis');
+    return res.redirect(`${FRONTEND_URL}/irankis`);
   }
   
   // Redirect to Google OAuth authentication
@@ -140,6 +143,7 @@ router.get('/api/check-auth', (req, res) => {
 
 // Logout route
 router.get('/logout', (req, res, next) => {
+  const { FRONTEND_URL } = req.app.locals.config;
   console.log('Logout request received');
   // Clear the session
   req.logout((err) => {
@@ -153,7 +157,7 @@ router.get('/logout', (req, res, next) => {
     res.clearCookie('loggedIn');
     
     console.log('User logged out successfully');
-    res.redirect('https://praktika2025.vercel.app/login');
+    res.redirect(`${FRONTEND_URL}/login`);
   });
 });
 

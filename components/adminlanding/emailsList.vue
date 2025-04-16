@@ -179,6 +179,8 @@
   const searchQuery = ref('');
   const dateFilter = ref('all');
   const isLoading = ref(false);
+  const config = useRuntimeConfig();
+  const apiBase = config.public.apiBase;
   
   // Fetch emails from the backend
   const fetchEmails = async () => {
@@ -202,7 +204,7 @@
       }
       
       // Fetch data from API
-      const response = await fetch(`https://praktika2025.onrender.com/api/emails/recent?${params.toString()}`);
+      const response = await fetch(`${apiBase}/api/emails/recent?${params.toString()}`);
       const data = await response.json();
       
       if (data.success) {
@@ -298,7 +300,7 @@
         params.append('dateFilter', dateFilter.value);
       }
       
-      const response = await fetch(`https://praktika2025.onrender.com/api/emails/recent?${params.toString()}`);
+      const response = await fetch(`${apiBase}/api/emails/recent?${params.toString()}`);
       const data = await response.json();
       
       if (data.success) {

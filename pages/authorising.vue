@@ -58,15 +58,16 @@
   const router = useRouter();
   const isChecking = ref(false);
   
+  
   // Check if user status has changed
   const checkStatus = async () => {
     try {
       isChecking.value = true;
       
       // Call the API to check user status
-      const response = await fetch('https://praktika2025.onrender.com/api/user/profile', {
-        credentials: 'include'
-      });
+      const response = await fetch(`${apiBase}/api/user/profile`, {
+      credentials: 'include'
+    });
       
       const data = await response.json();
       
@@ -92,17 +93,18 @@
     }
   };
   
-  // Logout function
+  const config = useRuntimeConfig();
+  const apiBase = config.public.apiBase;
+
   const logout = async () => {
     try {
-      await fetch('https://praktika2025.onrender.com/logout', {
-        credentials: 'include'
-      });
+      // Redirect to the backend logout endpoint
+      window.location.href = `${apiBase}/logout`;
       
-      // Redirect to login page
-      router.push('/login');
+      // Clear local user state
+      userStore.clearUser();
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Error during logout:', error);
     }
   };
   

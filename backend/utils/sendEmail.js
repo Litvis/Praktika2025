@@ -1,6 +1,5 @@
 import sgMail from '@sendgrid/mail';
 
-// Set up SendGrid API key
 const setupSendGrid = () => {
   if (!process.env.SENDGRID_API_KEY) {
     console.error("❌ SendGrid API key is missing");
