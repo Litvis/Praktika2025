@@ -254,6 +254,8 @@
   const isLoadingGroups = ref(false);
   const groups = ref([]);
   const showConfirmation = ref(false);
+  const config = useRuntimeConfig();
+  const apiBase = ref(config.public.apiBase);
   
   // Trigger file input click
   const triggerFileInput = () => {
@@ -432,7 +434,7 @@ const parseCSV = (file) => {
     try {
       isLoadingGroups.value = true;
       
-      const response = await fetch('${apiBase}/api/groups-with-counts', {
+      const response = await fetch(`${apiBase.value}/api/groups-with-counts`, {
         credentials: 'include'
       });
       
@@ -464,7 +466,7 @@ const parseCSV = (file) => {
       isImporting.value = true;
       error.value = '';
       
-      const response = await fetch('${apiBase}/api/import-csv', {
+      const response = await fetch(`${apiBase.value}/api/import-csv`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
