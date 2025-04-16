@@ -4,13 +4,7 @@ import GoogleStrategy from 'passport-google-oauth2';
 import dotenv from 'dotenv';
 import { pool } from '../db.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Try to load .env from project root
-dotenv.config({ 
-  path: path.resolve(__dirname, '../../.env') 
-});
+dotenv.config();
 
 // Create the router
 const router = express.Router();
@@ -179,7 +173,7 @@ router.get('/auth/google-alt',
 // Google OAuth callback handler
 router.get('/auth/google/callback', (req, res, next) => {
   console.log('Google OAuth callback received');
-  const FRONTEND_URL = process.env.FRONTEND_URL;
+  const { FRONTEND_URL } = req.app.locals.config;
   
   passport.authenticate('google', async (err, user, info) => {
     if (err) {

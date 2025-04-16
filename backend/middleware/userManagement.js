@@ -89,7 +89,7 @@ router.get('/api/admin/users', requireAdmin, async (req, res) => {
 
 // Approve a pending user (change role from 'pending' to 'worker')
 router.post('/api/admin/approve-user', requireAdmin, async (req, res) => {
-  const FRONTEND_URL = process.env.FRONTEND_URL;
+  const { FRONTEND_URL } = req.app.locals.config;
   try {
     const { id } = req.body;
     

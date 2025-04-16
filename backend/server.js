@@ -17,12 +17,11 @@ import userManagementRoutes from './middleware/userManagement.js';
 import csvImportRoutes from './routes/csvImportRoutes.js';
 import { sendEmail } from './utils/sendEmail.js';
 
-
+dotenv.config();
 
 // Set up __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 // Create Express app FIRST
 const app = express();

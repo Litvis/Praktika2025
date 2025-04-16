@@ -70,6 +70,7 @@ setupTables().catch(err => {
 
 // Get all groups with email counts
 router.get('/api/groups-with-counts', requireAuth, async (req, res) => {
+  const { FRONTEND_URL } = req.app.locals.config;
   try {
     const result = await pool.query(`
       SELECT g.id, g.name, g.description, g.created_at,
@@ -115,6 +116,7 @@ router.get('/api/groups', requireAuth, async (req, res) => {
 
 // Get emails for a specific group
 router.get('/api/groups/:id/emails', requireAuth, async (req, res) => {
+  const { FRONTEND_URL } = req.app.locals.config;
   try {
     const groupId = req.params.id;
     
@@ -156,6 +158,7 @@ router.get('/api/groups/:id/emails', requireAuth, async (req, res) => {
 
 // Import data from CSV (replacing all existing data)
 router.post('/api/import-csv', requireAdmin, async (req, res) => {
+  const { FRONTEND_URL } = req.app.locals.config;
   const client = await pool.connect();
   
   try {
