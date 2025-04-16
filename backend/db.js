@@ -1,7 +1,12 @@
 import pkg from 'pg';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
+
+// Correctly get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Explicitly set the path to the .env file in the backend directory
 const envPath = path.resolve(__dirname, '.env');
