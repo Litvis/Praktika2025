@@ -769,7 +769,7 @@ app.get('/setup-messages', async (req, res) => {
     `);
     
     if (!checkResult.rows[0].exists) {
-      // Create messages table if it doesn't exist
+      // Create messages table if it doesn't exist with sender columns
       await pool.query(`
         CREATE TABLE messages (
           id SERIAL PRIMARY KEY,
@@ -777,16 +777,70 @@ app.get('/setup-messages', async (req, res) => {
           description TEXT,
           recipient_email TEXT,
           attachments TEXT,
+          sender_email TEXT DEFAULT 'deividaslitvinenko4@gmail.com',
+          sender_name TEXT DEFAULT 'Sistema',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
-      res.status(200).json({ success: true, message: 'Messages table created successfully' });
+      res.status(200).json({ success: true, message: 'Messages table created successfully with sender fields' });
     } else {
-      res.status(200).json({ success: true, message: 'Messages table already exists' });
+      // Table exists, check if it has the sender columns
+      const checkEmailColumn = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='messages' AND column_name='sender_email'
+      `);
+      
+      const checkNameColumn = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='messages' AND column_name='sender_name'
+      `);
+      
+      let changes = [];
+      
+      // Add missing columns if needed
+      if (checkEmailColumn.rows.length === 0) {
+        await pool.query(`
+          ALTER TABLE messages 
+          ADD COLUMN sender_email TEXT DEFAULT 'deividaslitvinenko4@gmail.com';
+        `);
+        changes.push('Added sender_email column');
+      }
+      
+      if (checkNameColumn.rows.length === 0) {
+        await pool.query(`
+          ALTER TABLE messages 
+          ADD COLUMN sender_name TEXT DEFAULT 'Sistema';
+        `);
+        changes.push('Added sender_name column');
+      }
+      
+      // Update existing records if columns were added
+      if (changes.length > 0) {
+        await pool.query(`
+          UPDATE messages 
+          SET sender_email = 'deividaslitvinenko4@gmail.com', sender_name = 'Sistema' 
+          WHERE sender_email IS NULL OR sender_name IS NULL;
+        `);
+        changes.push('Updated existing records');
+      }
+      
+      if (changes.length > 0) {
+        res.status(200).json({ 
+          success: true, 
+          message: `Messages table updated: ${changes.join(', ')}` 
+        });
+      } else {
+        res.status(200).json({ 
+          success: true, 
+          message: 'Messages table already exists with all required columns' 
+        });
+      }
     }
   } catch (error) {
-    console.error('❌ Error creating messages table:', error);
-    res.status(500).json({ error: 'Failed to create messages table', details: error.message });
+    console.error('❌ Error setting up messages table:', error);
+    res.status(500).json({ error: 'Failed to set up messages table', details: error.message });
   }
 });
 
