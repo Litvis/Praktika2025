@@ -25,8 +25,8 @@ const isValidEmail = (email) => {
  * @returns {Promise} Promise objektas su SendGrid atsakymu
  */
 export const sendEmail = async (recipient, subject, message, attachments = [], config = {}, userEmail = null, userName = null) => {
-  // Nustatome siuntėjo el. paštą - pirmiau imame vartotojo el. paštą, jei yra
-  const senderEmail = userEmail || config?.EMAIL_SENDER || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com';
+  // IMPORTANT: Always use a verified sender email with SendGrid
+  const senderEmail = process.env.VERIFIED_SENDER_EMAIL || 'deividaslitvinenko4@gmail.com';
   
   // Nustatome siuntėjo vardą - pirmiau imame vartotojo vardą, jei yra
   const senderName = userName || config?.EMAIL_SENDER_NAME || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba';
@@ -45,6 +45,9 @@ export const sendEmail = async (recipient, subject, message, attachments = [], c
 
     console.log(`📧 Sending email to ${recipientsArray.length} recipients`);
     console.log(`📧 Sender info: ${senderName} <${senderEmail}>`);
+    if (userEmail) {
+      console.log(`📧 Reply-To: ${userName || 'User'} <${userEmail}>`);
+    }
     
     // Batch recipients if there are too many (SendGrid has limits)
     const BATCH_SIZE = 100; // SendGrid recommends batching for large recipient lists
@@ -72,6 +75,8 @@ export const sendEmail = async (recipient, subject, message, attachments = [], c
           email: senderEmail,
           name: senderName
         },
+        // Add reply-to if user email is provided
+        ...(userEmail ? { replyTo: { email: userEmail, name: userName || 'User' } } : {}),
         content: [
           {
             type: 'text/plain',
@@ -114,7 +119,8 @@ export const sendEmail = async (recipient, subject, message, attachments = [], c
       results: results,
       senderInfo: {
         email: senderEmail,
-        name: senderName
+        name: senderName,
+        replyTo: userEmail || null
       }
     };
   } catch (error) {

@@ -51,8 +51,8 @@ app.use(cors({
   allowedHeaders: [
     'Content-Type', 
     'Authorization',
-    'X-User-Email',   // Pridėkite šią eilutę
-    'X-User-Name'     // Pridėkite šią eilutę
+    'X-User-Email',  
+    'X-User-Name'    
   ]
 }));
 
@@ -296,8 +296,10 @@ app.post('/send-email', async (req, res) => {
       userInfo.name
     );
     
-    // Gauname siuntėjo informaciją iš emailResult
-    const senderInfo = emailResult.senderInfo || {
+    // Store the original user information for database records
+    // This will maintain who actually sent the email for tracking purposes
+    // Even though the actual sender used with SendGrid will be the verified email
+    const senderInfo = {
       email: userInfo.email || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com',
       name: userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba'
     };
@@ -696,7 +698,6 @@ app.get('/api/emails/stats/recipients', async (req, res) => {
   }
 });
 
-// Atnaujintas multipart form-data kelias el. laiško siuntimui
 app.post('/send-email-multipart', upload.array('files', 10), async (req, res) => {
   try {
     const { recipient, subject, message } = req.body;
@@ -744,8 +745,9 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       return res.status(400).json({ error: 'Invalid recipient email(s)' });
     }
 
-    // Nustatome siuntėjo informaciją iš vartotojo duomenų arba naudojame numatytuosius
-    const senderEmail = userInfo.email || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com';
+    // IMPORTANT: Always use a verified sender with SendGrid
+    // But store the original user info for tracking purposes
+    const senderEmail = process.env.VERIFIED_SENDER_EMAIL || 'deividaslitvinenko4@gmail.com';
     const senderName = userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba';
 
     const personalizations = recipientsArray.map(email => ({
@@ -759,6 +761,8 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
         email: senderEmail,
         name: senderName
       },
+      // Add reply-to header with the user's email if available
+      ...(userInfo.email ? { replyTo: { email: userInfo.email, name: userInfo.name || 'User' } } : {}),
       content: [
         {
           type: 'text/plain',
@@ -808,10 +812,14 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       ? req.files.map(file => file.originalname).join(', ') 
       : null;
 
+    // Save the original user information to the database for tracking
+    const dbSenderEmail = userInfo.email || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com';
+    const dbSenderName = userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba';
+
     // Save the email data to the database with sender information
     const dbResult = await pool.query(
       'INSERT INTO messages (subject, description, recipient_email, attachments, sender_email, sender_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [subject, message, recipient, attachmentNames, senderEmail, senderName]
+      [subject, message, recipient, attachmentNames, dbSenderEmail, dbSenderName]
     );
     console.log("✅ Saved to DB:", dbResult.rows[0]);
 
