@@ -224,29 +224,72 @@ app.use('/auth/*', async (req, res, next) => {
   }
 });
 
+// Atnaujintas maršrutas email siuntimui su vartotojo informacija iš sesijos
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
   console.log("📤 Incoming JSON request from frontend");
   console.log("Recipients count:", recipient ? recipient.split(',').length : 0);
 
   try {
-    // Send email using the improved handler
+    // Gauname vartotojo informaciją iš sesijos
+    const userInfo = {
+      email: null,
+      name: null
+    };
+    
+    // Jei vartotojas prisijungęs, išgauname jo informaciją
+    if (req.isAuthenticated() && req.user) {
+      // Išgauname el. paštą - bandome iš kelių galimų šaltinių
+      if (req.user.emails && req.user.emails.length > 0) {
+        userInfo.email = req.user.emails[0].value;
+      } else if (req.user.email) {
+        userInfo.email = req.user.email;
+      }
+      
+      // Išgauname vardą - bandome iš kelių galimų šaltinių
+      if (req.user.displayName) {
+        userInfo.name = req.user.displayName;
+      } else if (req.user.name) {
+        if (typeof req.user.name === 'object' && (req.user.name.givenName || req.user.name.familyName)) {
+          // Jei vardas yra objektas su givenName ir familyName
+          const parts = [];
+          if (req.user.name.givenName) parts.push(req.user.name.givenName);
+          if (req.user.name.familyName) parts.push(req.user.name.familyName);
+          userInfo.name = parts.join(' ');
+        } else if (typeof req.user.name === 'string') {
+          // Jei vardas yra tiesiog string
+          userInfo.name = req.user.name;
+        }
+      }
+    }
+    
+    console.log("👤 User info from session:", userInfo);
+
+    // Send email using the updated function with user info
     const emailResult = await sendEmail(
       recipient, 
       subject, 
       message, 
       attachments,
-      req.app.locals.config  // Pass the config from app.locals
+      req.app.locals.config,
+      userInfo.email,
+      userInfo.name
     );
     
-    // Save the email data to the database
+    // Gauname siuntėjo informaciją iš emailResult
+    const senderInfo = emailResult.senderInfo || {
+      email: userInfo.email || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com',
+      name: userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba'
+    };
+    
+    // Save the email data to the database with sender info
     const attachmentNames = attachments 
       ? attachments.map(a => a.filename).join(', ') 
       : null;
 
     const dbResult = await pool.query(
-      'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
-      [subject, message, recipient, attachmentNames]
+      'INSERT INTO messages (subject, description, recipient_email, attachments, sender_email, sender_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [subject, message, recipient, attachmentNames, senderInfo.email, senderInfo.name]
     );
     console.log("✅ Saved to DB:", dbResult.rows[0]);
 
@@ -284,7 +327,7 @@ app.get('/setup-users-table', async (req, res) => {
       );
     `);
     
-    // Insert some initial admin users if needed
+    // BŪTINAI PAKEISTI EL. PAŠTO ADRESĄ!!!!!!
     await pool.query(`
       INSERT INTO users (email, name, role) VALUES 
       ('administratorius@gmail.com', 'Admin User', 'admin')
@@ -351,40 +394,41 @@ app.get('/api/dashboard/stats', async (req, res) => {
   }
 });
 
-// Endpoint to get recent emails with search
 app.get('/api/emails/recent', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const offset = parseInt(req.query.offset) || 0;
     const search = req.query.search || '';
     
-    // Construct base query with search
+    // Konstruojame užklausą su paieška ir sender_name bei sender_email laukais
     let query = `
-      SELECT id, subject, description, created_at, recipient_email, attachments 
+      SELECT id, subject, description, created_at, recipient_email, attachments, sender_email, sender_name 
       FROM messages 
       WHERE 1=1
     `;
     
     const queryParams = [];
     
-    // Add search condition if search term is provided
+    // Pridedame paieškos sąlygą, jei pateiktas paieškos terminas
     if (search) {
       query += ` AND (
         LOWER(subject) LIKE LOWER($${queryParams.length + 1}) OR 
         LOWER(description) LIKE LOWER($${queryParams.length + 1}) OR 
-        LOWER(recipient_email) LIKE LOWER($${queryParams.length + 1})
+        LOWER(recipient_email) LIKE LOWER($${queryParams.length + 1}) OR
+        LOWER(sender_email) LIKE LOWER($${queryParams.length + 1}) OR
+        LOWER(sender_name) LIKE LOWER($${queryParams.length + 1})
       )`;
       queryParams.push(`%${search}%`);
     }
     
-    // Add ordering and pagination
+    // Pridedame rikiavimą ir puslapių padalinimą
     query += ` ORDER BY created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
     queryParams.push(limit, offset);
     
-    // Get filtered emails
+    // Gauname filtruotus el. laiškus
     const emailsResult = await pool.query(query, queryParams);
     
-    // Get total count for filtered results
+    // Gauname bendrą skaičių filtruotiems rezultatams
     let countQuery = `
       SELECT COUNT(*) 
       FROM messages 
@@ -397,7 +441,9 @@ app.get('/api/emails/recent', async (req, res) => {
       countQuery += ` AND (
         LOWER(subject) LIKE LOWER($${countParams.length + 1}) OR 
         LOWER(description) LIKE LOWER($${countParams.length + 1}) OR 
-        LOWER(recipient_email) LIKE LOWER($${countParams.length + 1})
+        LOWER(recipient_email) LIKE LOWER($${countParams.length + 1}) OR
+        LOWER(sender_email) LIKE LOWER($${countParams.length + 1}) OR
+        LOWER(sender_name) LIKE LOWER($${countParams.length + 1})
       )`;
       countParams.push(`%${search}%`);
     }
@@ -420,6 +466,69 @@ app.get('/api/emails/recent', async (req, res) => {
   } catch (error) {
     console.error('❌ Error fetching recent emails:', error);
     res.status(500).json({ error: 'Failed to fetch recent emails', details: error.message });
+  }
+});
+
+app.get('/setup-sender-fields', async (req, res) => {
+  try {
+    // Patikriname, ar jau egzistuoja sender_email stulpelis
+    const checkEmailResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='messages' AND column_name='sender_email'
+    `);
+    
+    // Patikriname, ar jau egzistuoja sender_name stulpelis
+    const checkNameResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='messages' AND column_name='sender_name'
+    `);
+    
+    // Pradedame transakciją
+    await pool.query('BEGIN');
+    
+    let changes = [];
+    
+    // Jei sender_email stulpelio nėra, pridedame jį
+    if (checkEmailResult.rows.length === 0) {
+      await pool.query(
+        'ALTER TABLE messages ADD COLUMN sender_email TEXT DEFAULT \'deividaslitvinenko4@gmail.com\''
+      );
+      changes.push('Added sender_email column');
+    }
+    
+    // Jei sender_name stulpelio nėra, pridedame jį
+    if (checkNameResult.rows.length === 0) {
+      await pool.query(
+        'ALTER TABLE messages ADD COLUMN sender_name TEXT DEFAULT \'Sistema\''
+      );
+      changes.push('Added sender_name column');
+    }
+    
+    // Atnaujiname esamus įrašus numatytaisiais duomenimis, jei buvo atlikti pakeitimai
+    if (changes.length > 0) {
+      await pool.query(
+        'UPDATE messages SET sender_email = $1, sender_name = $2 WHERE sender_email IS NULL OR sender_name IS NULL',
+        [process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com', 'Sistema']
+      );
+      changes.push('Updated existing records');
+    }
+    
+    // Patvirtinti pakeitimus
+    await pool.query('COMMIT');
+    
+    res.status(200).json({ 
+      success: true, 
+      message: changes.length > 0 
+        ? `Database updated: ${changes.join(', ')}` 
+        : 'No changes needed, schema already up to date' 
+    });
+  } catch (error) {
+    // Atšaukti pakeitimus klaidos atveju
+    await pool.query('ROLLBACK');
+    console.error('❌ Error updating schema for sender fields:', error);
+    res.status(500).json({ error: 'Failed to update database schema', details: error.message });
   }
 });
 
@@ -495,11 +604,43 @@ app.get('/api/emails/stats/recipients', async (req, res) => {
   }
 });
 
-// Alternative multipart form-data approach for file uploads
+// Atnaujintas multipart form-data kelias el. laiško siuntimui
 app.post('/send-email-multipart', upload.array('files', 10), async (req, res) => {
   try {
     const { recipient, subject, message } = req.body;
     console.log("📤 Incoming multipart request from frontend");
+
+    // Gauname vartotojo informaciją iš sesijos
+    const userInfo = {
+      email: null,
+      name: null
+    };
+    
+    // Jei vartotojas prisijungęs, išgauname jo informaciją
+    if (req.isAuthenticated() && req.user) {
+      // Išgauname el. paštą - bandome iš kelių galimų šaltinių
+      if (req.user.emails && req.user.emails.length > 0) {
+        userInfo.email = req.user.emails[0].value;
+      } else if (req.user.email) {
+        userInfo.email = req.user.email;
+      }
+      
+      // Išgauname vardą - bandome iš kelių galimų šaltinių
+      if (req.user.displayName) {
+        userInfo.name = req.user.displayName;
+      } else if (req.user.name) {
+        if (typeof req.user.name === 'object' && (req.user.name.givenName || req.user.name.familyName)) {
+          const parts = [];
+          if (req.user.name.givenName) parts.push(req.user.name.givenName);
+          if (req.user.name.familyName) parts.push(req.user.name.familyName);
+          userInfo.name = parts.join(' ');
+        } else if (typeof req.user.name === 'string') {
+          userInfo.name = req.user.name;
+        }
+      }
+    }
+    
+    console.log("👤 User info from session:", userInfo);
 
     // Validate recipient email(s)
     const recipientsArray = recipient
@@ -511,6 +652,10 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       return res.status(400).json({ error: 'Invalid recipient email(s)' });
     }
 
+    // Nustatome siuntėjo informaciją iš vartotojo duomenų arba naudojame numatytuosius
+    const senderEmail = userInfo.email || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com';
+    const senderName = userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba';
+
     const personalizations = recipientsArray.map(email => ({
       to: [{ email }],
       subject: subject
@@ -519,8 +664,8 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
     const msg = {
       personalizations: personalizations,
       from: {
-        email: process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com',
-        name: 'Užimtumo tarnyba'
+        email: senderEmail,
+        name: senderName
       },
       content: [
         {
@@ -571,10 +716,10 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       ? req.files.map(file => file.originalname).join(', ') 
       : null;
 
-    // Save the email data to the database - UPDATED to use pool instead of client
+    // Save the email data to the database with sender information
     const dbResult = await pool.query(
-      'INSERT INTO messages (subject, description, recipient_email, attachments) VALUES ($1, $2, $3, $4) RETURNING *',
-      [subject, message, recipient, attachmentNames]
+      'INSERT INTO messages (subject, description, recipient_email, attachments, sender_email, sender_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [subject, message, recipient, attachmentNames, senderEmail, senderName]
     );
     console.log("✅ Saved to DB:", dbResult.rows[0]);
 

@@ -13,8 +13,24 @@ const isValidEmail = (email) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
-// Function to send email
-export const sendEmail = async (recipient, subject, message, attachments = []) => {
+/**
+ * Siunčia el. laišką naudojant SendGrid API
+ * @param {string} recipient - Gavėjo el. pašto adresas(-ai) atskirti kableliu
+ * @param {string} subject - El. laiško tema
+ * @param {string} message - El. laiško turinys (gali būti HTML)
+ * @param {Array} attachments - Priedų masyvas
+ * @param {Object} config - Konfigūracijos objektas
+ * @param {string} userEmail - Vartotojo el. pašto adresas iš sesijos (neprivalomas)
+ * @param {string} userName - Vartotojo vardas iš sesijos (neprivalomas)
+ * @returns {Promise} Promise objektas su SendGrid atsakymu
+ */
+export const sendEmail = async (recipient, subject, message, attachments = [], config = {}, userEmail = null, userName = null) => {
+  // Nustatome siuntėjo el. paštą - pirmiau imame vartotojo el. paštą, jei yra
+  const senderEmail = userEmail || config?.EMAIL_SENDER || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com';
+  
+  // Nustatome siuntėjo vardą - pirmiau imame vartotojo vardą, jei yra
+  const senderName = userName || config?.EMAIL_SENDER_NAME || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba';
+  
   try {
     setupSendGrid();
     
@@ -28,6 +44,7 @@ export const sendEmail = async (recipient, subject, message, attachments = []) =
     }
 
     console.log(`📧 Sending email to ${recipientsArray.length} recipients`);
+    console.log(`📧 Sender info: ${senderName} <${senderEmail}>`);
     
     // Batch recipients if there are too many (SendGrid has limits)
     const BATCH_SIZE = 100; // SendGrid recommends batching for large recipient lists
@@ -52,8 +69,8 @@ export const sendEmail = async (recipient, subject, message, attachments = []) =
       const msg = {
         personalizations: personalizations,
         from: {
-          email: 'deividaslitvinenko4@gmail.com',
-          name: 'Užimtumo tarnyba'
+          email: senderEmail,
+          name: senderName
         },
         content: [
           {
@@ -94,7 +111,11 @@ export const sendEmail = async (recipient, subject, message, attachments = []) =
     return {
       success: true,
       message: `Email sent to ${recipientsArray.length} recipients`,
-      results: results
+      results: results,
+      senderInfo: {
+        email: senderEmail,
+        name: senderName
+      }
     };
   } catch (error) {
     console.error('❌ Error sending email:', error);

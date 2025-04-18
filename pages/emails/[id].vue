@@ -28,9 +28,23 @@
           <!-- Email Header -->
           <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
             <h1 class="font-bold text-2xl text-gray-800">{{ email.subject }}</h1>
-            <div class="mt-2 text-sm text-gray-600 flex justify-between items-center">
-              <span>
-                Gavėjas: 
+            <div class="mt-2 text-sm text-gray-600 flex flex-col space-y-1">
+              <!-- Siuntėjo informacija -->
+              <div class="flex justify-between items-center">
+                <span>
+                  <span class="font-medium">Siuntėjas:</span> 
+                  {{ formatSender(email) }}
+                </span>
+                <span>
+                  Išsiųsta: 
+                  {{ formatDay(new Date(email.created_at)) }} 
+                  {{ formatTime(new Date(email.created_at)) }}
+                </span>
+              </div>
+              
+              <!-- Gavėjo informacija -->
+              <div>
+                <span class="font-medium">Gavėjas:</span>
                 <!-- Show recipient count if more than 2 -->
                 <span v-if="recipientCount > 2" class="relative">
                   <span>{{ recipientCount }} gavėjai</span>
@@ -57,12 +71,7 @@
                 </span>
                 <!-- Show actual recipients if 2 or fewer -->
                 <span v-else>{{ email.recipient_email }}</span>
-              </span>
-              <span>
-                Išsiųsta: 
-                {{ formatDay(new Date(email.created_at)) }} 
-                {{ formatTime(new Date(email.created_at)) }}
-              </span>
+              </div>
             </div>
           </div>
 
@@ -192,6 +201,19 @@ const recipientsList = computed(() => {
 const recipientCount = computed(() => {
   return recipientsList.value.length;
 });
+
+// Format sender info
+const formatSender = (email) => {
+  if (email.sender_name && email.sender_email) {
+    return `${email.sender_name} (${email.sender_email})`;
+  } else if (email.sender_name) {
+    return email.sender_name;
+  } else if (email.sender_email) {
+    return email.sender_email;
+  } else {
+    return 'Sistema';
+  }
+};
 
 // Fetch email details
 const fetchEmailDetails = async () => {
