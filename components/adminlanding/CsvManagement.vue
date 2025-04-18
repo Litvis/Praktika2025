@@ -56,20 +56,20 @@
               </button>
             </div>
             <div v-if="warningMessage" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-  <div class="flex items-center">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-      <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-    </svg>
-    <p class="ml-3 text-sm text-yellow-700">{{ warningMessage }}</p>
-  </div>
-</div>
+              <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <p class="ml-3 text-sm text-yellow-700">{{ warningMessage }}</p>
+              </div>
+            </div>
           </div>
           
           <!-- Preview Section -->
           <div v-if="parsedData.length > 0" class="mt-6">
             <div class="flex justify-between items-center mb-2">
               <h3 class="text-lg font-medium text-gray-700">Peržiūra</h3>
-              <span class="text-sm text-gray-500">Rasta {{ parsedData.length }} įrašų</span>
+              <span class="text-sm text-gray-500">Rasta {{ parsedData.length }} galiojančių įrašų</span>
             </div>
             
             <div class="border rounded-lg overflow-hidden">
@@ -95,6 +95,38 @@
             </div>
           </div>
           
+          <!-- Invalid Emails Section -->
+          <div v-if="invalidEmails.length > 0" class="mt-6">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="text-lg font-medium text-red-700">Neteisingi el. paštai</h3>
+              <span class="text-sm text-red-500">Rasta {{ invalidEmails.length }} neteisingų el. paštų</span>
+            </div>
+            
+            <div class="border border-red-200 rounded-lg overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-red-100">
+                  <thead class="bg-red-50">
+                    <tr>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">Grupė</th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">Neteisingas el. paštas</th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">Problema</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-red-100">
+                    <tr v-for="(row, index) in invalidEmailsPreview" :key="index">
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.Group }}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-mono">{{ row.Email }}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ row.Reason }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-if="invalidEmails.length > 5" class="bg-red-50 px-6 py-3 text-sm text-red-600 text-center">
+                Rodoma 5 iš {{ invalidEmails.length }} neteisingų el. paštų
+              </div>
+            </div>
+          </div>
+          
           <!-- Stats Preview -->
           <div v-if="parsedData.length > 0" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
@@ -102,13 +134,12 @@
               <p class="text-2xl font-bold text-blue-800">{{ uniqueGroups.length }}</p>
             </div>
             <div class="bg-green-50 rounded-lg p-4 border border-green-100">
-              <p class="text-sm text-green-600">El. paštų skaičius</p>
+              <p class="text-sm text-green-600">Galiojančių el. paštų</p>
               <p class="text-2xl font-bold text-green-800">{{ parsedData.length }}</p>
             </div>
-            <div class="bg-purple-50 rounded-lg p-4 border border-purple-100">
-              <p class="text-sm text-purple-600">Didžiausia grupė</p>
-              <p class="text-2xl font-bold text-purple-800">{{ largestGroup.name }}</p>
-              <p class="text-sm text-purple-600">{{ largestGroup.count }} el. paštai</p>
+            <div class="bg-red-50 rounded-lg p-4 border border-red-100">
+              <p class="text-sm text-red-600">Negaliojančių el. paštų</p>
+              <p class="text-2xl font-bold text-red-800">{{ invalidEmails.length }}</p>
             </div>
           </div>
           
@@ -240,59 +271,137 @@
   </template>
   
   <script setup>
-  import { ref, computed, onMounted } from 'vue';
-  import Sidebar from '~/components/adminlanding/Sidebar.vue';
-  import Papa from 'papaparse';
-  
-  // State
-  const fileInput = ref(null);
-  const selectedFile = ref(null);
-  const parsedData = ref([]);
-  const error = ref('');
-  const isDragging = ref(false);
-  const isImporting = ref(false);
-  const isLoadingGroups = ref(false);
-  const groups = ref([]);
-  const showConfirmation = ref(false);
-  const config = useRuntimeConfig();
-  const apiBase = ref(config.public.apiBase);
-  
-  // Trigger file input click
-  const triggerFileInput = () => {
-    fileInput.value.click();
-  };
-  
-  // Handle file selection
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type === 'text/csv') {
-      selectedFile.value = file;
-      parseCSV(file);
-    } else {
-      error.value = 'Netinkamas failo formatas. Prašome pasirinkti CSV failą.';
-    }
-  };
-  
-  // Handle file drop
-  const handleFileDrop = (event) => {
-    isDragging.value = false;
-    const file = event.dataTransfer.files[0];
-    if (file && file.type === 'text/csv') {
-      selectedFile.value = file;
-      parseCSV(file);
-    } else {
-      error.value = 'Netinkamas failo formatas. Prašome pasirinkti CSV failą.';
-    }
-  };
-  
-// Add warningMessage to the reactive variables
+import { ref, computed, onMounted } from 'vue';
+import Sidebar from '~/components/adminlanding/Sidebar.vue';
+import Papa from 'papaparse';
+
+// State
+const fileInput = ref(null);
+const selectedFile = ref(null);
+const parsedData = ref([]);
+const invalidEmails = ref([]); // Čia saugosime neteisingus el. paštus
+const error = ref('');
 const warningMessage = ref('');
+const isDragging = ref(false);
+const isImporting = ref(false);
+const isLoadingGroups = ref(false);
+const groups = ref([]);
+const showConfirmation = ref(false);
+const config = useRuntimeConfig();
+const apiBase = ref(config.public.apiBase);
+
+// Trigger file input click
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+// Detali el. pašto validavimo funkcija, kuri grąžina ir klaidos priežastį
+const validateEmail = (email) => {
+  // Jei tuščias arba netinkamo tipo
+  if (!email || typeof email !== 'string') {
+    return { isValid: false, reason: 'Tuščias el. paštas' };
+  }
+  
+  // Pašaliname tarpus
+  email = email.trim();
+  
+  if (email.length === 0) {
+    return { isValid: false, reason: 'Tuščias el. paštas' };
+  }
+  
+  // Tikriname ar yra @ simbolis
+  if (!email.includes('@')) {
+    return { isValid: false, reason: 'Trūksta @ simbolio' };
+  }
+  
+  // Daliname į vartotojo ir domeno dalis
+  const parts = email.split('@');
+  if (parts.length !== 2) {
+    return { isValid: false, reason: 'Neteisingai naudojamas @ simbolis' };
+  }
+  
+  const [localPart, domainPart] = parts;
+  
+  // Tikriname vartotojo dalį
+  if (!localPart) {
+    return { isValid: false, reason: 'Trūksta vartotojo dalies prieš @' };
+  }
+  
+  if (localPart.startsWith('.') || localPart.endsWith('.')) {
+    return { isValid: false, reason: 'Vartotojo dalis negali prasidėti ar baigtis tašku' };
+  }
+  
+  if (localPart.includes('..')) {
+    return { isValid: false, reason: 'Vartotojo dalyje negali būti kelių taškų iš eilės' };
+  }
+  
+  // Tikriname domeno dalį
+  if (!domainPart) {
+    return { isValid: false, reason: 'Trūksta domeno dalies po @' };
+  }
+  
+  // Tikriname, ar domene yra taškas
+  if (!domainPart.includes('.')) {
+    return { isValid: false, reason: 'Trūksta taško domeno dalyje' };
+  }
+  
+  // Tikriname TLD (top-level domain)
+  const domains = domainPart.split('.');
+  const tld = domains[domains.length - 1];
+  
+  if (!tld || tld.length < 2) {
+    return { isValid: false, reason: 'Netinkamas TLD (per trumpas)' };
+  }
+  
+  // Tikriname, ar nėra neleistinų simbolių
+  const validEmailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  
+  if (!validEmailRegex.test(email)) {
+    return { isValid: false, reason: 'El. paštas turi neleistinų simbolių' };
+  }
+  
+  // Tikriname ilgį
+  if (email.length > 255) {
+    return { isValid: false, reason: 'El. paštas per ilgas (max 255 simboliai)' };
+  }
+  
+  return { isValid: true, reason: '' };
+};
+
+// Supaprastinta funkcija, kuri grąžina tik boolean
+const isValidEmail = (email) => {
+  return validateEmail(email).isValid;
+};
+
+// Handle file selection
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
+  if (file && file.type === 'text/csv') {
+    selectedFile.value = file;
+    parseCSV(file);
+  } else {
+    error.value = 'Netinkamas failo formatas. Prašome pasirinkti CSV failą.';
+  }
+};
+
+// Handle file drop
+const handleFileDrop = (event) => {
+  isDragging.value = false;
+  const file = event.dataTransfer.files[0];
+  if (file && file.type === 'text/csv') {
+    selectedFile.value = file;
+    parseCSV(file);
+  } else {
+    error.value = 'Netinkamas failo formatas. Prašome pasirinkti CSV failą.';
+  }
+};
 
 // Parse CSV file
 const parseCSV = (file) => {
   error.value = '';
-  warningMessage.value = ''; // Clear any previous warning
+  warningMessage.value = '';
   parsedData.value = [];
+  invalidEmails.value = []; // Išvalome ankstesnius neteisingus el. paštus
   
   Papa.parse(file, {
     header: true,
@@ -304,29 +413,54 @@ const parseCSV = (file) => {
         return;
       }
       
-      // Validate data format
-      if (!results.meta.fields.includes('Grupė') || !results.meta.fields.includes('Paštas')) {
-        error.value = 'CSV faile nerastas "Grupė" arba "Paštas" stulpelis/stulpeliai.';
+      // Patikriname, ar CSV turi reikiamus stulpelius (Grupė/Group, Paštas/Email)
+      const hasGroupPastas = results.meta.fields.includes('Grupė') && results.meta.fields.includes('Paštas');
+      const hasGroupEmail = results.meta.fields.includes('Group') && results.meta.fields.includes('Email');
+      
+      if (!hasGroupPastas && !hasGroupEmail) {
+        error.value = 'CSV faile nerastas "Grupė"/"Group" arba "Paštas"/"Email" stulpelis/stulpeliai.';
         return;
       }
       
-      // Filter out invalid entries and standardize data
-      const validData = results.data
-        .filter(row => 
-          row.Grupė && row.Grupė.trim() !== '' && 
-          row.Paštas && row.Paštas.includes('@')
-        )
-        .map(row => ({
-          Group: row.Grupė.trim(),
-          Email: row.Paštas.trim().toLowerCase() // Normalize emails to lowercase
-        }));
+      // Nustatome, kuriuos stulpelių pavadinimus naudoti
+      const groupField = results.meta.fields.includes('Grupė') ? 'Grupė' : 'Group';
+      const emailField = results.meta.fields.includes('Paštas') ? 'Paštas' : 'Email';
+      
+      // Filtruojame neteisingus įrašus ir standartizuojame duomenis
+      const allData = results.data;
+      const validData = [];
+      const invalidEmailsList = [];
+      
+      for (const row of allData) {
+        const groupName = row[groupField] ? row[groupField].trim() : '';
+        if (!groupName) continue; // Praleidžiame eilutes be grupės
+        
+        const email = row[emailField] ? row[emailField].trim().toLowerCase() : '';
+        const validationResult = validateEmail(email);
+        
+        if (validationResult.isValid) {
+          validData.push({
+            Group: groupName,
+            Email: email
+          });
+        } else {
+          invalidEmailsList.push({
+            Group: groupName,
+            Email: email,
+            Reason: validationResult.reason
+          });
+        }
+      }
+      
+      // Išsaugome neteisingus el. paštus, kad galėtume juos rodyti vartotojui
+      invalidEmails.value = invalidEmailsList;
       
       if (validData.length === 0) {
         error.value = 'CSV faile nerasta galiojančių duomenų.';
         return;
       }
       
-      // Check for duplicates
+      // Tikriname dublikatus
       const uniqueEntries = new Set();
       const duplicates = [];
       const finalData = [];
@@ -342,184 +476,200 @@ const parseCSV = (file) => {
         }
       }
       
-      // Display warning if duplicates were found
+      // Sukuriame perspėjimo žinutę apie dublikatus ir neteisingus el. paštus
+      const warningMessages = [];
+      
       if (duplicates.length > 0) {
-        console.warn(`Rasti ${duplicates.length} duplikatai, jie bus ignoruojami.`);
-        warningMessage.value = `Rasta ${duplicates.length} pasikartojančių įrašų, kurie bus ignoruojami.`;
-      } else {
-        warningMessage.value = '';
+        warningMessages.push(`Rasta ${duplicates.length} pasikartojančių įrašų, kurie bus ignoruojami.`);
+      }
+      
+      if (invalidEmailsList.length > 0) {
+        warningMessages.push(`Rasta ${invalidEmailsList.length} neteisingų el. pašto adresų, kurie bus ignoruojami.`);
+      }
+      
+      if (warningMessages.length > 0) {
+        warningMessage.value = warningMessages.join(' ');
       }
       
       parsedData.value = finalData;
     }
   });
 };
+
+// Remove selected file
+const removeFile = () => {
+  selectedFile.value = null;
+  parsedData.value = [];
+  invalidEmails.value = [];
+  error.value = '';
+  warningMessage.value = '';
+};
+
+// Format file size for display
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// Format date for display
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('lt-LT', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+// Preview data (limit to first 5 rows)
+const previewData = computed(() => {
+  return parsedData.value.slice(0, 5);
+});
+
+// Preview for invalid emails (limit to first 5)
+const invalidEmailsPreview = computed(() => {
+  return invalidEmails.value.slice(0, 5);
+});
+
+// Get unique groups
+const uniqueGroups = computed(() => {
+  const groups = new Set();
+  parsedData.value.forEach(row => groups.add(row.Group));
+  return Array.from(groups);
+});
+
+// Get group with the most emails
+const largestGroup = computed(() => {
+  const groupCounts = {};
   
-  // Remove selected file
-  const removeFile = () => {
-    selectedFile.value = null;
-    parsedData.value = [];
-    error.value = '';
-  };
-  
-  // Format file size for display
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-  
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('lt-LT', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-  
-  // Preview data (limit to first 5 rows)
-  const previewData = computed(() => {
-    return parsedData.value.slice(0, 5);
+  parsedData.value.forEach(row => {
+    const groupName = row.Group;
+    groupCounts[groupName] = (groupCounts[groupName] || 0) + 1;
   });
   
-  // Get unique groups
-  const uniqueGroups = computed(() => {
-    const groups = new Set();
-    parsedData.value.forEach(row => groups.add(row.Group));
-    return Array.from(groups);
-  });
+  let maxCount = 0;
+  let maxGroup = '';
   
-  // Get group with the most emails
-  const largestGroup = computed(() => {
-    const groupCounts = {};
-    
-    parsedData.value.forEach(row => {
-      const groupName = row.Group;
-      groupCounts[groupName] = (groupCounts[groupName] || 0) + 1;
-    });
-    
-    let maxCount = 0;
-    let maxGroup = '';
-    
-    for (const [group, count] of Object.entries(groupCounts)) {
-      if (count > maxCount) {
-        maxCount = count;
-        maxGroup = group;
-      }
+  for (const [group, count] of Object.entries(groupCounts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      maxGroup = group;
     }
-    
-    return { name: maxGroup, count: maxCount };
-  });
-  
-  // Check if import is possible
-  const canImport = computed(() => {
-    return parsedData.value.length > 0 && !error.value;
-  });
-  
-  // Show confirmation dialog
-  const confirmImport = () => {
-    if (!canImport.value) return;
-    showConfirmation.value = true;
-  };
-  
-  // Fetch existing groups
-  const fetchGroups = async () => {
-    try {
-      isLoadingGroups.value = true;
-      
-      const response = await fetch(`${apiBase.value}/api/groups-with-counts`, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        groups.value = data.groups;
-      } else {
-        throw new Error(data.error || 'Nepavyko užkrauti grupių');
-      }
-    } catch (err) {
-      console.error('Error fetching groups:', err);
-      error.value = 'Nepavyko užkrauti grupių. Bandykite dar kartą vėliau.';
-    } finally {
-      isLoadingGroups.value = false;
-    }
-  };
-  
-  // Import data to database
-  const importData = async () => {
-    if (!canImport.value) return;
-    
-    try {
-      showConfirmation.value = false;
-      isImporting.value = true;
-      error.value = '';
-      
-      const response = await fetch(`${apiBase.value}/api/import-csv`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          data: parsedData.value
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        alert(`Duomenys sėkmingai importuoti.\n\nSukurta grupių: ${result.stats.groups}\nImportuota el. paštų: ${result.stats.emails}`);
-        
-        // Reset form and refresh groups
-        resetForm();
-        fetchGroups();
-      } else {
-        throw new Error(result.error || 'Nepavyko importuoti duomenų');
-      }
-    } catch (err) {
-      console.error('Error importing data:', err);
-      error.value = `Nepavyko importuoti duomenų: ${err.message}`;
-    } finally {
-      isImporting.value = false;
-    }
-  };
-  
-  // Reset form
-  const resetForm = () => {
-    selectedFile.value = null;
-    parsedData.value = [];
-    error.value = '';
-  };
-  
-  // Load groups when component mounts
-  onMounted(() => {
-    fetchGroups();
-  });
-  </script>
-  
-  <style scoped>
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
   
-  .animate-spin {
-    animation: spin 1s linear infinite;
+  return { name: maxGroup, count: maxCount };
+});
+
+// Check if import is possible
+const canImport = computed(() => {
+  return parsedData.value.length > 0 && !error.value;
+});
+
+// Show confirmation dialog
+const confirmImport = () => {
+  if (!canImport.value) return;
+  showConfirmation.value = true;
+};
+
+// Fetch existing groups
+const fetchGroups = async () => {
+  try {
+    isLoadingGroups.value = true;
+    
+    const response = await fetch(`${apiBase.value}/api/groups-with-counts`, {
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      groups.value = data.groups;
+    } else {
+      throw new Error(data.error || 'Nepavyko užkrauti grupių');
+    }
+  } catch (err) {
+    console.error('Error fetching groups:', err);
+    error.value = 'Nepavyko užkrauti grupių. Bandykite dar kartą vėliau.';
+  } finally {
+    isLoadingGroups.value = false;
   }
-  </style>
+};
+
+// Import data to database
+const importData = async () => {
+  if (!canImport.value) return;
+  
+  try {
+    showConfirmation.value = false;
+    isImporting.value = true;
+    error.value = '';
+    
+    const response = await fetch(`${apiBase.value}/api/import-csv`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        data: parsedData.value
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(`Duomenys sėkmingai importuoti.\n\nSukurta grupių: ${result.stats.groups}\nImportuota el. paštų: ${result.stats.emails}`);
+      
+      // Reset form and refresh groups
+      resetForm();
+      fetchGroups();
+    } else {
+      throw new Error(result.error || 'Nepavyko importuoti duomenų');
+    }
+  } catch (err) {
+    console.error('Error importing data:', err);
+    error.value = `Nepavyko importuoti duomenų: ${err.message}`;
+  } finally {
+    isImporting.value = false;
+  }
+};
+
+// Reset form
+const resetForm = () => {
+  selectedFile.value = null;
+  parsedData.value = [];
+  invalidEmails.value = [];
+  error.value = '';
+  warningMessage.value = '';
+};
+
+// Load groups when component mounts
+onMounted(() => {
+  fetchGroups();
+});
+</script>
+
+<style scoped>
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+</style>

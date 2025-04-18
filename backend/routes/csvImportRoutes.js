@@ -19,6 +19,55 @@ const requireAdmin = (req, res, next) => {
   return res.status(403).json({ success: false, error: 'Access denied. Admin role required.' });
 };
 
+/**
+ * Validuoja el. pašto adresą naudojant regex
+ * @param {string} email - El. pašto adresas validavimui
+ * @returns {boolean} - Ar el. pašto adresas validus
+ */
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  
+  // Pašaliname tarpus pradžioje ir pabaigoje
+  email = email.trim();
+  
+  // Tikriname ilgį
+  if (email.length < 6 || email.length > 255) return false;
+  
+  // Pagrindinis validavimo regex
+  // Šis regex patikrina:
+  // - Vartotojo dalį (prieš @): gali būti raidės, skaičiai, taškai, brūkšneliai, pabraukimai
+  // - Būtinas @ simbolis
+  // - Domeno dalį: gali būti raidės, skaičiai, taškai, brūkšneliai
+  // - Privalo būti bent vienas taškas domeno dalyje
+  // - Po paskutinio taško turi būti bent 2 raidės (TLD)
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  
+  // Patikriname su regex
+  if (!emailRegex.test(email)) return false;
+  
+  // Papildomos patikros:
+  
+  // 1. Vartotojo dalis negali prasidėti ar baigtis tašku
+  const [localPart] = email.split('@');
+  if (localPart.startsWith('.') || localPart.endsWith('.')) return false;
+  
+  // 2. Negali būti dviejų taškų iš eilės vartotojo dalyje
+  if (localPart.includes('..')) return false;
+  
+  // 3. Po @ turi būti validus domenas
+  const [, domain] = email.split('@');
+  
+  // Domenas negali prasidėti ar baigtis brūkšneliu
+  if (domain.startsWith('-') || domain.endsWith('-')) return false;
+  
+  // Papildoma validacija TLD (top-level domain)
+  const tld = domain.split('.').pop();
+  if (tld.length < 2) return false;
+  
+  // Jei praėjo visus testus, el. paštas yra validus
+  return true;
+}
+
 // Ensure necessary tables exist
 const setupTables = async () => {
   const client = await pool.connect();
@@ -184,7 +233,8 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
     // Stats to track the import process
     const stats = {
       groups: 0,
-      emails: 0
+      emails: 0,
+      invalidEmails: 0
     };
     
     // Process groups
@@ -209,11 +259,14 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
     
     // Process emails
     for (const row of data) {
-      // Skip invalid emails
-      if (!row.Email || !row.Email.includes('@')) continue;
+      // Validate email
+      const email = row.Email ? row.Email.trim().toLowerCase() : '';
+      if (!isValidEmail(email)) {
+        stats.invalidEmails++;
+        continue; // Skip invalid emails
+      }
       
       const groupId = groupNameToId[row.Group];
-      const email = row.Email.trim();
       
       try {
         // Insert the email, handling duplicate constraint violations
@@ -231,7 +284,7 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
       }
     }
     
-    console.log(`Added ${stats.emails} emails`);
+    console.log(`Added ${stats.emails} emails, skipped ${stats.invalidEmails} invalid emails`);
     
     // Commit the transaction
     await client.query('COMMIT');
