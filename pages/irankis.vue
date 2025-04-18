@@ -254,6 +254,7 @@ const sendEmail = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: emailData,
+      credentials: 'include',
     });
 
     console.log("✅ Server response:", response);
