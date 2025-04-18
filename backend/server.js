@@ -267,6 +267,16 @@ app.post('/send-email', async (req, res) => {
         }
       }
     }
+
+    if (!userInfo.email && req.headers['x-user-email']) {
+      userInfo.email = req.headers['x-user-email'];
+      console.log("Using email from headers:", userInfo.email);
+    }
+    
+    if (!userInfo.name && req.headers['x-user-name']) {
+      userInfo.name = req.headers['x-user-name'];
+      console.log("Using name from headers:", userInfo.name);
+    }
     
     console.log("Final userInfo to be used for sending:", userInfo);
 

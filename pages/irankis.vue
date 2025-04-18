@@ -251,11 +251,14 @@ const sendEmail = async () => {
     const config = useRuntimeConfig();
 
     const response = await $fetch(`${config.public.apiBase}/send-email`, { 
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: emailData,
-      credentials: 'include',
-    });
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-User-Email': userStore.user?.email || '',
+      'X-User-Name': userStore.user?.displayName || ''
+    },
+    body: emailData,
+  });
 
     console.log("✅ Server response:", response);
     
