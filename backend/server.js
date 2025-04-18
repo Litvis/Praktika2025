@@ -229,6 +229,7 @@ app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
   console.log("📤 Incoming JSON request from frontend");
   console.log("Recipients count:", recipient ? recipient.split(',').length : 0);
+  console.log("Full user object:", req.user); // Pilnas vartotojo objektas
 
   try {
     // Gauname vartotojo informaciją iš sesijos
@@ -237,33 +238,37 @@ app.post('/send-email', async (req, res) => {
       name: null
     };
     
-    // Jei vartotojas prisijungęs, išgauname jo informaciją
+    // Patikriname, ar vartotojas yra prisijungęs
     if (req.isAuthenticated() && req.user) {
-      // Išgauname el. paštą - bandome iš kelių galimų šaltinių
+      console.log("User is authenticated, session user:", req.user);
+      
+      // Tiesiogiai tikriname pilną req.user objektą
       if (req.user.emails && req.user.emails.length > 0) {
         userInfo.email = req.user.emails[0].value;
+        console.log("Found email in user.emails:", userInfo.email);
       } else if (req.user.email) {
         userInfo.email = req.user.email;
+        console.log("Found email in user.email:", userInfo.email);
       }
       
-      // Išgauname vardą - bandome iš kelių galimų šaltinių
       if (req.user.displayName) {
         userInfo.name = req.user.displayName;
+        console.log("Found name in user.displayName:", userInfo.name);
       } else if (req.user.name) {
         if (typeof req.user.name === 'object' && (req.user.name.givenName || req.user.name.familyName)) {
-          // Jei vardas yra objektas su givenName ir familyName
           const parts = [];
           if (req.user.name.givenName) parts.push(req.user.name.givenName);
           if (req.user.name.familyName) parts.push(req.user.name.familyName);
           userInfo.name = parts.join(' ');
+          console.log("Found name in user.name object:", userInfo.name);
         } else if (typeof req.user.name === 'string') {
-          // Jei vardas yra tiesiog string
           userInfo.name = req.user.name;
+          console.log("Found name in user.name string:", userInfo.name);
         }
       }
     }
     
-    console.log("👤 User info from session:", userInfo);
+    console.log("Final userInfo to be used for sending:", userInfo);
 
     // Send email using the updated function with user info
     const emailResult = await sendEmail(
@@ -282,7 +287,9 @@ app.post('/send-email', async (req, res) => {
       name: userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba'
     };
     
-    // Save the email data to the database with sender info
+    console.log("Sender info to be saved to DB:", senderInfo);
+
+    // Save the email data to the database
     const attachmentNames = attachments 
       ? attachments.map(a => a.filename).join(', ') 
       : null;
@@ -291,7 +298,7 @@ app.post('/send-email', async (req, res) => {
       'INSERT INTO messages (subject, description, recipient_email, attachments, sender_email, sender_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [subject, message, recipient, attachmentNames, senderInfo.email, senderInfo.name]
     );
-    console.log("✅ Saved to DB:", dbResult.rows[0]);
+    console.log("Saved to DB, record:", dbResult.rows[0]);
 
     // Respond with success message
     res.status(200).json({ 
