@@ -400,9 +400,27 @@ app.get('/api/emails/recent', async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
     const search = req.query.search || '';
     
-    // Konstruojame užklausą su paieška ir sender_name bei sender_email laukais
+    // Tikrinti ar stulpeliai egzistuoja
+    const checkEmailColumn = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='messages' AND column_name='sender_email'
+    `);
+    
+    const checkNameColumn = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='messages' AND column_name='sender_name'
+    `);
+    
+    const hasSenderEmail = checkEmailColumn.rows.length > 0;
+    const hasSenderName = checkNameColumn.rows.length > 0;
+    
+    // Modifikuoti užklausą pagal esamus stulpelius
     let query = `
-      SELECT id, subject, description, created_at, recipient_email, attachments, sender_email, sender_name 
+      SELECT id, subject, description, created_at, recipient_email, attachments
+      ${hasSenderEmail ? ', sender_email' : ''}
+      ${hasSenderName ? ', sender_name' : ''}
       FROM messages 
       WHERE 1=1
     `;
@@ -411,13 +429,21 @@ app.get('/api/emails/recent', async (req, res) => {
     
     // Pridedame paieškos sąlygą, jei pateiktas paieškos terminas
     if (search) {
-      query += ` AND (
+      let searchQuery = ` AND (
         LOWER(subject) LIKE LOWER($${queryParams.length + 1}) OR 
         LOWER(description) LIKE LOWER($${queryParams.length + 1}) OR 
-        LOWER(recipient_email) LIKE LOWER($${queryParams.length + 1}) OR
-        LOWER(sender_email) LIKE LOWER($${queryParams.length + 1}) OR
-        LOWER(sender_name) LIKE LOWER($${queryParams.length + 1})
-      )`;
+        LOWER(recipient_email) LIKE LOWER($${queryParams.length + 1})`;
+      
+      if (hasSenderEmail) {
+        searchQuery += ` OR LOWER(sender_email) LIKE LOWER($${queryParams.length + 1})`;
+      }
+      
+      if (hasSenderName) {
+        searchQuery += ` OR LOWER(sender_name) LIKE LOWER($${queryParams.length + 1})`;
+      }
+      
+      searchQuery += `)`;
+      query += searchQuery;
       queryParams.push(`%${search}%`);
     }
     
@@ -427,6 +453,13 @@ app.get('/api/emails/recent', async (req, res) => {
     
     // Gauname filtruotus el. laiškus
     const emailsResult = await pool.query(query, queryParams);
+    
+    // Pridedame trūkstamus laukus, jei jų nėra duomenų bazėje
+    const emails = emailsResult.rows.map(row => ({
+      ...row,
+      sender_email: row.sender_email || 'deividaslitvinenko4@gmail.com',
+      sender_name: row.sender_name || 'Sistema'
+    }));
     
     // Gauname bendrą skaičių filtruotiems rezultatams
     let countQuery = `
@@ -438,13 +471,21 @@ app.get('/api/emails/recent', async (req, res) => {
     const countParams = [];
     
     if (search) {
-      countQuery += ` AND (
+      let searchCountQuery = ` AND (
         LOWER(subject) LIKE LOWER($${countParams.length + 1}) OR 
         LOWER(description) LIKE LOWER($${countParams.length + 1}) OR 
-        LOWER(recipient_email) LIKE LOWER($${countParams.length + 1}) OR
-        LOWER(sender_email) LIKE LOWER($${countParams.length + 1}) OR
-        LOWER(sender_name) LIKE LOWER($${countParams.length + 1})
-      )`;
+        LOWER(recipient_email) LIKE LOWER($${countParams.length + 1})`;
+      
+      if (hasSenderEmail) {
+        searchCountQuery += ` OR LOWER(sender_email) LIKE LOWER($${countParams.length + 1})`;
+      }
+      
+      if (hasSenderName) {
+        searchCountQuery += ` OR LOWER(sender_name) LIKE LOWER($${countParams.length + 1})`;
+      }
+      
+      searchCountQuery += `)`;
+      countQuery += searchCountQuery;
       countParams.push(`%${search}%`);
     }
     
@@ -454,7 +495,7 @@ app.get('/api/emails/recent', async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        emails: emailsResult.rows,
+        emails: emails,
         pagination: {
           total: totalCount,
           limit,
@@ -537,18 +578,47 @@ app.get('/api/emails/:id', async (req, res) => {
   try {
     const emailId = req.params.id;
     
-    const emailResult = await pool.query(
-      'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages WHERE id = $1',
-      [emailId]
-    );
+    // Tikrinti ar stulpeliai egzistuoja
+    const checkEmailColumn = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='messages' AND column_name='sender_email'
+    `);
+    
+    const checkNameColumn = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='messages' AND column_name='sender_name'
+    `);
+    
+    const hasSenderEmail = checkEmailColumn.rows.length > 0;
+    const hasSenderName = checkNameColumn.rows.length > 0;
+    
+    // Modifikuoti užklausą pagal esamus stulpelius
+    let query = `
+      SELECT id, subject, description, created_at, recipient_email, attachments
+      ${hasSenderEmail ? ', sender_email' : ''}
+      ${hasSenderName ? ', sender_name' : ''}
+      FROM messages 
+      WHERE id = $1
+    `;
+    
+    const emailResult = await pool.query(query, [emailId]);
     
     if (emailResult.rows.length === 0) {
       return res.status(404).json({ error: 'Email not found' });
     }
     
+    // Pridedame trūkstamus laukus, jei jų nėra duomenų bazėje
+    const email = {
+      ...emailResult.rows[0],
+      sender_email: emailResult.rows[0].sender_email || 'deividaslitvinenko4@gmail.com',
+      sender_name: emailResult.rows[0].sender_name || 'Sistema'
+    };
+    
     res.status(200).json({
       success: true,
-      data: emailResult.rows[0]
+      data: email
     });
   } catch (error) {
     console.error(`❌ Error fetching email with ID ${req.params.id}:`, error);
@@ -844,11 +914,94 @@ app.get('/setup-messages', async (req, res) => {
   }
 });
 
+async function setupMessagesTable() {
+  try {
+    console.log('Checking for messages table and required columns...');
+    
+    // Patikriname, ar egzistuoja messages lentelė
+    const checkTableResult = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        AND table_name = 'messages'
+      );
+    `);
+    
+    if (!checkTableResult.rows[0].exists) {
+      // Sukuriame lentelę, jei jos nėra
+      console.log('Creating messages table with all required columns...');
+      await pool.query(`
+        CREATE TABLE messages (
+          id SERIAL PRIMARY KEY,
+          subject TEXT,
+          description TEXT,
+          recipient_email TEXT,
+          attachments TEXT,
+          sender_email TEXT DEFAULT 'deividaslitvinenko4@gmail.com',
+          sender_name TEXT DEFAULT 'Sistema',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log('Messages table created successfully with sender fields');
+    } else {
+      // Patikriname, ar yra reikalingi stulpeliai
+      const checkEmailColumn = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='messages' AND column_name='sender_email'
+      `);
+      
+      const checkNameColumn = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='messages' AND column_name='sender_name'
+      `);
+      
+      // Pridedame trūkstamus stulpelius
+      if (checkEmailColumn.rows.length === 0) {
+        console.log('Adding sender_email column to messages table...');
+        await pool.query(`
+          ALTER TABLE messages 
+          ADD COLUMN sender_email TEXT DEFAULT 'deividaslitvinenko4@gmail.com';
+        `);
+      }
+      
+      if (checkNameColumn.rows.length === 0) {
+        console.log('Adding sender_name column to messages table...');
+        await pool.query(`
+          ALTER TABLE messages 
+          ADD COLUMN sender_name TEXT DEFAULT 'Sistema';
+        `);
+      }
+      
+      // Atnaujiname senus įrašus, jei yra stulpelių be reikšmių
+      if (checkEmailColumn.rows.length === 0 || checkNameColumn.rows.length === 0) {
+        console.log('Updating existing records with default sender values...');
+        await pool.query(`
+          UPDATE messages 
+          SET 
+            sender_email = COALESCE(sender_email, 'deividaslitvinenko4@gmail.com'),
+            sender_name = COALESCE(sender_name, 'Sistema')
+          WHERE sender_email IS NULL OR sender_name IS NULL;
+        `);
+      }
+      
+      console.log('Messages table structure verified and updated if needed');
+    }
+  } catch (error) {
+    console.error('❌ Error setting up messages table:', error);
+    throw error;
+  }
+}
+
+
+// Atnaujinta startServer funkcija
 async function startServer() {
   try {
     // Ensure tables exist first
     await ensureSessionTableExists();
     await ensureUsersTableExists();
+    await setupMessagesTable(); // Pridėtas naujas kvietimas
 
     console.log('CORS origin configuration:', process.env.FRONTEND_URL);
     console.log('Full CORS configuration:', {
