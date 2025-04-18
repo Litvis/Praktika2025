@@ -287,7 +287,7 @@ app.get('/setup-users-table', async (req, res) => {
     // Insert some initial admin users if needed
     await pool.query(`
       INSERT INTO users (email, name, role) VALUES 
-      ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
+      ('administratorius@gmail.com', 'Admin User', 'admin')
       ON CONFLICT (email) DO NOTHING;
     `);
     
