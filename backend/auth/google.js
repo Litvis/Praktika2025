@@ -84,15 +84,6 @@ passport.use(new GoogleStrategy({
     const userEmail = profile.emails[0].value;
     console.log(`OAuth login attempt with email: ${userEmail}`);
 
-    // For personal Gmail accounts, check if they're in the allowed list
-    if (!userEmail.endsWith('@uzt.lt')) {
-      if (!ALLOWED_EMAILS.includes(userEmail.toLowerCase())) {
-        console.log(`Email not allowed: ${userEmail}`);
-        return done(null, false, { message: 'Email not allowed' });
-      }
-      console.log(`Gmail account allowed: ${userEmail}`);
-    }
-
     // Check if user exists in our database
     const userResult = await pool.query(
       'SELECT * FROM users WHERE email = $1', 
@@ -153,12 +144,11 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-// Company email login route (with hd parameter)
 router.get('/auth/google', 
   passport.authenticate('google', { 
     scope: ['profile', 'email'],
-    prompt: 'select_account',
-    hd: 'uzt.lt' // Restrict to uzt.lt domain
+    prompt: 'select_account'
+    // Remove the hd: 'uzt.lt' parameter
   })
 );
 
