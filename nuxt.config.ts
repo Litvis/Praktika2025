@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   runtimeConfig: {
     public: {
-      apiBase: process.env.API_BASE_URL || 'https://praktika2025.onrender.com'
+      apiBase: process.env.API_BASE_URL || 'http://localhost:3001'
     }
   },
   routeRules: {
@@ -32,4 +32,5 @@ export default defineNuxtConfig({
         pathPrefix: false,
       },
     ],
+    
 })

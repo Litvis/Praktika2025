@@ -16,6 +16,7 @@ import googleAuthRouter from './auth/google.js';
 import userManagementRoutes from './middleware/userManagement.js';
 import csvImportRoutes from './routes/csvImportRoutes.js';
 import { sendEmail } from './utils/sendEmail.js';
+import { createPool } from './db-utils.js';
 
 dotenv.config();
 
@@ -28,9 +29,22 @@ const app = express();
 
 // Set up PostgreSQL connection pool
 const { Pool } = pkg;
+const isLocalDatabase = (connectionString) => {
+  return !connectionString || 
+         connectionString.includes('localhost') || 
+         connectionString.includes('127.0.0.1');
+};
+
+// Configure SSL based on whether we're connecting to a local database
+const sslConfig = isLocalDatabase(process.env.DATABASE_URL) 
+  ? false 
+  : { rejectUnauthorized: false };
+
+console.log(`Database connection: ${isLocalDatabase(process.env.DATABASE_URL) ? 'Local' : 'Remote'} SSL: ${sslConfig ? 'Enabled' : 'Disabled'}`);
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: sslConfig,
   max: 10, // Maximum connections in pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
@@ -39,13 +53,14 @@ const pool = new Pool({
 // Configure session store
 const PgStore = connectPgSimple(session);
 const sessionStore = new PgStore({
-  pool: pool,
+  pool: createPool(), // Use your utility function
   tableName: 'sessions',
   createTableIfMissing: true
 });
 
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: ['https://praktika2025.vercel.app', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
@@ -63,6 +78,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 app.set('trust proxy', 1);
 
+// In server.js where you set up the session
 app.use(session({
   store: sessionStore,
   secret: process.env.SESSION_SECRET || 'your_fallback_secret',
@@ -70,9 +86,9 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    secure: process.env.NODE_ENV === 'production' || process.env.ENABLE_HTTPS === 'true',
+    secure: false, // <-- CRITICAL: Set to false for localhost
     httpOnly: true,
-    sameSite: 'none' // Critical for cross-domain requests
+    sameSite: 'lax' // <-- Change to 'lax' for localhost
   }
 }));
 
@@ -126,11 +142,24 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client:', err);
 });
 
+// Add this debug endpoint in server.js
+app.get('/api/debug/auth', (req, res) => {
+  res.json({
+    session: req.session,
+    isAuthenticated: req.isAuthenticated(),
+    user: req.user,
+    cookies: req.headers.cookie
+  });
+});
+
 // Function to ensure users table exists
 async function ensureUsersTableExists() {
   try {
     console.log('Checking for users table...');
-    const checkTableResult = await pool.query(`
+    // Create a new pool for this operation using your utility
+    const userPool = createPool();
+    
+    const checkTableResult = await userPool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public'
@@ -142,7 +171,7 @@ async function ensureUsersTableExists() {
     
     if (!tableExists) {
       console.log('Creating users table...');
-      await pool.query(`
+      await userPool.query(`
         CREATE TABLE users (
           id SERIAL PRIMARY KEY,
           email VARCHAR(255) UNIQUE NOT NULL,
@@ -153,9 +182,9 @@ async function ensureUsersTableExists() {
       `);
       
       // Insert some initial admin users if needed
-      await pool.query(`
+      await userPool.query(`
         INSERT INTO users (email, name, role) VALUES 
-        ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
+        ('utarnyba@gmail.com', 'Admin User', 'admin')
         ON CONFLICT (email) DO NOTHING;
       `);
       
@@ -163,17 +192,22 @@ async function ensureUsersTableExists() {
     } else {
       console.log('Users table already exists');
     }
+    
+    // Close this pool when done
+    await userPool.end();
   } catch (error) {
     console.error('Error ensuring users table exists:', error);
     throw error;
   }
 }
 
-// Function to ensure sessions table exists
 async function ensureSessionTableExists() {
   try {
     console.log('Checking for sessions table...');
-    const checkTableResult = await pool.query(`
+    // Create a new pool for this operation using your utility
+    const sessionPool = createPool();
+    
+    const checkTableResult = await sessionPool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public'
@@ -185,7 +219,7 @@ async function ensureSessionTableExists() {
     
     if (!tableExists) {
       console.log('Creating sessions table...');
-      await pool.query(`
+      await sessionPool.query(`
         CREATE TABLE IF NOT EXISTS "sessions" (
           "sid" varchar NOT NULL COLLATE "default",
           "sess" json NOT NULL,
@@ -198,10 +232,14 @@ async function ensureSessionTableExists() {
     } else {
       console.log('Sessions table already exists');
     }
+    
+    // Close this pool when done
+    await sessionPool.end();
   } catch (error) {
     console.error('Error ensuring sessions table exists:', error);
   }
 }
+
 
 
 
@@ -947,6 +985,7 @@ app.get('/setup-messages', async (req, res) => {
 async function setupMessagesTable() {
   try {
     console.log('Checking for messages table and required columns...');
+    // Use the main pool instead of creating a new one
     
     // Patikriname, ar egzistuoja messages lentelė
     const checkTableResult = await pool.query(`
@@ -1023,6 +1062,169 @@ async function setupMessagesTable() {
     throw error;
   }
 }
+
+// Endpoint to create sessions table if it doesn't exist
+app.get('/setup-sessions-table', async (req, res) => {
+  try {
+    console.log('Creating sessions table...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "sessions" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "sessions_pkey" PRIMARY KEY ("sid")
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_sessions_expire" ON "sessions" ("expire");
+    `);
+    
+    res.status(200).json({ success: true, message: 'Sessions table created successfully' });
+  } catch (error) {
+    console.error('Error creating sessions table:', error);
+    res.status(500).json({ error: 'Failed to create sessions table', details: error.message });
+  }
+});
+
+// Endpoint to create users table if it doesn't exist
+app.get('/setup-users-table', async (req, res) => {
+  try {
+    console.log('Creating users table...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'worker',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    // Insert initial admin user
+    await pool.query(`
+      INSERT INTO users (email, name, role) VALUES 
+      ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
+      ON CONFLICT (email) DO NOTHING;
+    `);
+    
+    res.status(200).json({ success: true, message: 'Users table created successfully' });
+  } catch (error) {
+    console.error('Error creating users table:', error);
+    res.status(500).json({ error: 'Failed to create users table', details: error.message });
+  }
+});
+
+// Function to manually verify and create all required tables
+app.get('/setup-all-tables', async (req, res) => {
+  try {
+    // Check each table and create if needed
+    const tables = [
+      {
+        name: 'users',
+        query: `
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            name VARCHAR(255),
+            role VARCHAR(50) DEFAULT 'worker',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          
+          INSERT INTO users (email, name, role) VALUES 
+          ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
+          ON CONFLICT (email) DO NOTHING;
+        `
+      },
+      {
+        name: 'sessions',
+        query: `
+          CREATE TABLE IF NOT EXISTS "sessions" (
+            "sid" varchar NOT NULL COLLATE "default",
+            "sess" json NOT NULL,
+            "expire" timestamp(6) NOT NULL,
+            CONSTRAINT "sessions_pkey" PRIMARY KEY ("sid")
+          );
+          CREATE INDEX IF NOT EXISTS "IDX_sessions_expire" ON "sessions" ("expire");
+        `
+      },
+      {
+        name: 'messages',
+        query: `
+          CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            subject TEXT,
+            description TEXT,
+            recipient_email TEXT,
+            attachments TEXT,
+            sender_email TEXT DEFAULT 'deividaslitvinenko4@gmail.com',
+            sender_name TEXT DEFAULT 'Sistema',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `
+      }
+    ];
+    
+    const results = {};
+    
+    // Process each table
+    for (const table of tables) {
+      try {
+        // Check if table exists
+        const checkResult = await pool.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            AND table_name = $1
+          );
+        `, [table.name]);
+        
+        const tableExists = checkResult.rows[0].exists;
+        
+        if (!tableExists) {
+          // Create table if it doesn't exist
+          console.log(`Creating ${table.name} table...`);
+          await pool.query(table.query);
+          results[table.name] = 'Created';
+        } else {
+          results[table.name] = 'Already exists';
+        }
+      } catch (error) {
+        console.error(`Error processing ${table.name} table:`, error);
+        results[table.name] = `Error: ${error.message}`;
+      }
+    }
+    
+    // Ensure attachments column exists in messages table
+    try {
+      const checkAttachmentsResult = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='messages' AND column_name='attachments'
+      `);
+      
+      if (checkAttachmentsResult.rows.length === 0) {
+        console.log('Adding attachments column to messages table...');
+        await pool.query('ALTER TABLE messages ADD COLUMN attachments TEXT');
+        results['messages.attachments'] = 'Added';
+      } else {
+        results['messages.attachments'] = 'Already exists';
+      }
+    } catch (error) {
+      console.error('Error adding attachments column:', error);
+      results['messages.attachments'] = `Error: ${error.message}`;
+    }
+    
+    res.status(200).json({ 
+      success: true, 
+      message: 'Database tables verification complete', 
+      results: results 
+    });
+  } catch (error) {
+    console.error('Error setting up all tables:', error);
+    res.status(500).json({ 
+      error: 'Failed to set up all tables', 
+      details: error.message 
+    });
+  }
+});
 
 
 // Atnaujinta startServer funkcija

@@ -46,13 +46,12 @@
         <p class="text-gray-600 text-center mb-8 max-w-sm">
           Srautinio laiškų siuntimo įrankis
         </p>
-          <!-- Personal Email Login -->
-          <a 
-  :href="`${apiBase}/auth/google-alt`" 
-  class="flex items-center justify-center w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium shadow-sm hover:shadow transition-all duration-200 group"
->
-            <span>Prisijungti</span>
-          </a>
+        <button 
+      @click="loginWithGoogle" 
+      class="flex items-center justify-center w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium shadow-sm hover:shadow transition-all duration-200 group"
+    >
+      <span>Prisijungti</span>
+    </button>
         </div>
       
       </div>
@@ -75,9 +74,26 @@ const route = useRoute();
 const config = useRuntimeConfig();
 const apiBase = ref(config.public.apiBase);
 
+// Add this login function
+function loginWithGoogle() {
+  // Force the backend URL for development
+  const backendUrl = process.env.NODE_ENV === 'development' 
+    ? 'http://localhost:3001' 
+    : apiBase.value;
+  
+  console.log('Starting Google login, redirecting to:', `${backendUrl}/auth/google-alt`);
+  
+  // Now explicitly set where we're redirecting to
+  window.location.href = `${backendUrl}/auth/google-alt`;
+}
+
 // Check for error parameter in URL on mount
 onMounted(() => {
   const error = route.query.error;
+  
+  // For debugging - log backend URL
+  console.log('Backend API base URL:', apiBase.value);
+  console.log('Current environment:', process.env.NODE_ENV);
   
   if (error) {
     switch (error) {

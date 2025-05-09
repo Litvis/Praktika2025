@@ -1,35 +1,41 @@
-// middleware/auth.global.js
 export default defineNuxtRouteMiddleware(async (to, from) => {
+  // Skip middleware for debug pages
+  if (to.path === '/debug') {
+    console.log('Skipping auth middleware for debug page');
+    return;
+  }
+  
+  console.log('Auth middleware running for path:', to.path);
   const userStore = useUserStore();
-
-  // Skip middleware for login, unauthorized, and authorising pages
+  
+  // Skip middleware for public pages
   if (to.path === '/login' || to.path === '/unauthorized' || to.path === '/authorising') {
-    console.log('Skipping auth check for login/unauthorized/authorising page');
+    console.log('Skipping auth check for public page:', to.path);
     return;
   }
 
-  console.log('Auth middleware running for path:', to.path);
-
-  // If user data isn't loaded yet, fetch it
-  if (!userStore.user && !userStore.isLoading) {
-    console.log('User data not loaded, fetching profile...');
-    await userStore.fetchUserProfile();
-  }
-
-  // Wait if currently loading
-  if (userStore.isLoading) {
-    console.log('Waiting for user data to load...');
-    // Could implement a loading spinner here
-  }
-
-  console.log('Auth state:', {
+  console.log('Initial auth state:', {
     isAuthenticated: userStore.isAuthenticated,
     isAdmin: userStore.isAdmin,
     isPending: userStore.isPending,
-    user: userStore.user
+    isLoading: userStore.isLoading
   });
 
-  // IMPORTANT: If user is not authenticated, always redirect to login
+  // CRITICAL: Make sure we always fetch the profile
+  try {
+    console.log('Fetching user profile in middleware');
+    await userStore.fetchUserProfile();
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+  }
+
+  console.log('Auth state after fetch:', {
+    isAuthenticated: userStore.isAuthenticated,
+    isAdmin: userStore.isAdmin,
+    isPending: userStore.isPending
+  });
+
+  // If user is not authenticated, redirect to login
   if (!userStore.isAuthenticated) {
     console.log('User not authenticated, redirecting to login');
     return navigateTo('/login');
@@ -41,7 +47,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     return navigateTo('/authorising');
   }
 
-  // List ALL admin-only paths - be comprehensive
+  // Admin permission checks
   const adminOnlyPaths = [
     '/dashboard',
     '/admin',
@@ -53,24 +59,19 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     '/user-management'
   ];
 
-  // Check for EXACT path matches first
   if (adminOnlyPaths.includes(to.path) && !userStore.isAdmin) {
     console.log(`Non-admin attempting to access admin path: ${to.path}`);
     return navigateTo('/unauthorized');
   }
 
-  // Then check for path patterns
   const isAdminPath = adminOnlyPaths.some(path => to.path.startsWith(path));
   const isEmailDetailPage = /^\/emails\/\d+$/.test(to.path);
   const isAdminRoute = isAdminPath || isEmailDetailPage;
 
-  // If this is an admin path and user is not admin, ALWAYS redirect to unauthorized
   if (isAdminRoute && !userStore.isAdmin) {
     console.log(`Non-admin attempting to access admin path pattern: ${to.path}`);
     return navigateTo('/unauthorized');
   }
 
-  // Allow navigation for authenticated users to non-admin pages
-  // Or for admin users to any page
   console.log('Auth check passed, allowing navigation');
 });

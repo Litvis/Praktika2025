@@ -160,10 +160,13 @@ router.get('/auth/google-alt',
   })
 );
 
-// Google OAuth callback handler
+// Google OAuth callback handler - UPDATED WITH FIXES
 router.get('/auth/google/callback', (req, res, next) => {
   console.log('Google OAuth callback received');
-  const { FRONTEND_URL } = req.app.locals.config;
+  dotenv.config();
+  // Use environment variable directly
+  const FRONTEND_URL = process.env.FRONTEND_URL;
+  console.log('Using frontend URL for redirect:', FRONTEND_URL);
   
   passport.authenticate('google', async (err, user, info) => {
     if (err) {
@@ -202,14 +205,24 @@ router.get('/auth/google/callback', (req, res, next) => {
         console.log('Session created, ID:', req.sessionID);
         console.log('Is authenticated:', req.isAuthenticated());
 
-        // Set a successful login cookie with appropriate settings
-        res.cookie('loggedIn', 'true', {
-          httpOnly: false, // Allow JavaScript access
-          secure: true,    // HTTPS only
-          sameSite: 'none', // Allow cross-site
-          maxAge: 24 * 60 * 60 * 1000 // 24 hours
-        });
+        // Check if we're in production by looking at the BACKEND_URL value
+        const isProduction = !process.env.BACKEND_URL.includes('localhost');
+        console.log('Environment:', isProduction ? 'production' : 'development');
+        
+// In google.js, update the cookie settings in the callback handler
+res.cookie('loggedIn', 'true', {
+  httpOnly: false,
+  secure: false, // <-- CRITICAL: Set to false for localhost
+  sameSite: 'lax', // <-- Change to 'lax' for localhost
+  maxAge: 24 * 60 * 60 * 1000
+});
 
+        // Log the redirect URL for debugging
+        const redirectPath = user.role === 'pending' 
+          ? `${FRONTEND_URL}/authorising`
+          : `${FRONTEND_URL}/irankis`;
+        console.log(`Redirecting user with role ${user.role} to: ${redirectPath}`);
+        
         // Redirect based on role and approval status
         if (user.role === 'pending') {
           return res.redirect(`${FRONTEND_URL}/authorising`);
@@ -228,11 +241,12 @@ router.get('/auth/google/callback', (req, res, next) => {
   })(req, res, next);
 });
 
-// Logout route
+// Logout route - UPDATED to use FRONTEND_URL from environment
 router.get('/logout', (req, res, next) => {
+  const FRONTEND_URL = process.env.FRONTEND_URL;
   req.logout((err) => {
     if (err) { return next(err); }
-    res.redirect('/login');
+    res.redirect(`${FRONTEND_URL}/login`);
   });
 });
 

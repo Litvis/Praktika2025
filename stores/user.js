@@ -1,57 +1,73 @@
 // stores/user.js
 import { defineStore } from 'pinia';
+import { ref, computed, onMounted } from 'vue';
 
 export const useUserStore = defineStore('user', () => {
   // Reactive state
   const user = ref(null);
   const isAdmin = ref(false);
-  const isPending = ref(false); // New state for pending status
+  const isPending = ref(false);
   const isAuthenticated = ref(false);
   const isLoading = ref(true);
   const lastCheck = ref(0);
   const error = ref(null);
+  const debugMessages = ref([]);
 
-  // Actions
+  // Helper for debugging
+  function log(message, data = null) {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      message,
+      data: data ? JSON.stringify(data) : null
+    };
+    console.log(`[UserStore] ${message}`, data || '');
+    debugMessages.value.push(logEntry);
+    // Keep only the last 50 messages
+    if (debugMessages.value.length > 50) {
+      debugMessages.value.shift();
+    }
+  }
+
   function setUser(userData) {
-    console.log('Setting user data:', userData);
+    log('Setting user data', userData);
     user.value = userData;
     isAdmin.value = userData?.role === 'admin';
-    isPending.value = userData?.role === 'pending'; // Set pending status
+    isPending.value = userData?.role === 'pending';
     isAuthenticated.value = true;
-    isLoading.value = false;
     lastCheck.value = Date.now();
     error.value = null;
   }
 
   function clearUser() {
-    console.log('Clearing user data');
+    log('Clearing user data');
     user.value = null;
     isAdmin.value = false;
-    isPending.value = false; // Reset pending status
+    isPending.value = false;
     isAuthenticated.value = false;
-    isLoading.value = false; // Make sure to set loading to false
     lastCheck.value = Date.now();
+    error.value = null;
   }
 
   async function fetchUserProfile() {
     try {
-      // Avoid frequent refetching (cache for 5 minutes)
-      const cacheTime = 5 * 60 * 1000; // 5 minutes
+      // Avoid frequent refetching (cache for 30 seconds during development)
+      const cacheTime = 30 * 1000; // 30 seconds
       if (Date.now() - lastCheck.value < cacheTime && user.value) {
-        console.log('Using cached user profile');
+        log('Using cached user profile');
         return user.value;
       }
 
-      console.log('Fetching user profile from API');
+      log('Fetching user profile from API');
       isLoading.value = true;
       error.value = null;
       
       const config = useRuntimeConfig();
       const apiUrl = `${config.public.apiBase}/api/user/profile`;
       
-      console.log('API URL:', apiUrl);
+      log('API URL', apiUrl);
       
-      const response = await $fetch(apiUrl, {
+      // Use the standard fetch API instead of $fetch
+      const response = await fetch(apiUrl, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -59,19 +75,30 @@ export const useUserStore = defineStore('user', () => {
         }
       });
       
-      console.log('API response:', response);
+      log('API response status', response.status);
       
-      if (response.success) {
-        console.log('User profile fetched successfully:', response.user);
-        setUser(response.user);
-        return response.user;
+      if (response.ok) {
+        const data = await response.json();
+        log('API response data', data);
+        
+        if (data.success && data.user) {
+          setUser(data.user);
+          return data.user;
+        } else {
+          log('API returned success=false or no user data', data);
+          clearUser();
+          error.value = 'Invalid user data received';
+          return null;
+        }
       } else {
-        console.log('User profile fetch unsuccessful');
+        const errorText = await response.text();
+        log('API error', { status: response.status, text: errorText });
         clearUser();
+        error.value = `API error: ${response.status}`;
         return null;
       }
     } catch (err) {
-      console.error('Error fetching user profile:', err);
+      log('Error fetching user profile', err);
       error.value = err.message || 'Failed to fetch user profile';
       clearUser();
       return null;
@@ -82,7 +109,7 @@ export const useUserStore = defineStore('user', () => {
 
   async function logout() {
     try {
-      console.log('Logging out user');
+      log('Logging out user');
       const config = useRuntimeConfig();
       
       // Redirect to the backend logout endpoint instead of fetching it
@@ -91,7 +118,7 @@ export const useUserStore = defineStore('user', () => {
       clearUser();
       return true;
     } catch (err) {
-      console.error('Error during logout:', err);
+      log('Error during logout', err);
       error.value = err.message || 'Failed to logout';
       return false;
     }
@@ -100,11 +127,11 @@ export const useUserStore = defineStore('user', () => {
   // Check user approval status
   async function checkApprovalStatus() {
     try {
-      console.log('Checking user approval status');
+      log('Checking user approval status');
       const config = useRuntimeConfig();
       const apiUrl = `${config.public.apiBase}/api/check-approval-status`;
       
-      const response = await $fetch(apiUrl, {
+      const response = await fetch(apiUrl, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -112,30 +139,29 @@ export const useUserStore = defineStore('user', () => {
         }
       });
       
-      if (response.success) {
-        if (response.approved && user.value) {
-          console.log('User is approved with role:', response.role);
-          // Update user role if it's changed
-          if (user.value.role !== response.role) {
-            user.value.role = response.role;
-            isAdmin.value = response.role === 'admin';
-            isPending.value = false;
+      if (response.ok) {
+        const data = await response.json();
+        log('Approval status response', data);
+        
+        if (data.success) {
+          if (data.approved && user.value) {
+            log('User is approved with role', data.role);
+            // Update user role if it's changed
+            if (user.value.role !== data.role) {
+              user.value.role = data.role;
+              isAdmin.value = data.role === 'admin';
+              isPending.value = false;
+            }
           }
+          return data.approved;
         }
-        return response.approved;
       }
       return false;
     } catch (err) {
-      console.error('Error checking approval status:', err);
+      log('Error checking approval status', err);
       return false;
     }
   }
-
-  // Check for authentication immediately
-  onMounted(() => {
-    console.log('User store mounted, checking authentication');
-    fetchUserProfile();
-  });
 
   // Return the reactive state and actions
   return {
@@ -145,6 +171,7 @@ export const useUserStore = defineStore('user', () => {
     isAuthenticated,
     isLoading,
     error,
+    debugMessages,
     setUser,
     clearUser,
     fetchUserProfile,
@@ -152,22 +179,3 @@ export const useUserStore = defineStore('user', () => {
     checkApprovalStatus
   };
 });
-
-// Optional composable for easier access
-export const useUser = () => {
-  const userStore = useUserStore();
-  
-  // Additional computed properties
-  const isLoggedIn = computed(() => userStore.isAuthenticated);
-  const userRole = computed(() => {
-    if (userStore.isAdmin) return 'admin';
-    if (userStore.isPending) return 'pending';
-    return 'worker';
-  });
-  
-  return {
-    ...toRefs(userStore),
-    isLoggedIn,
-    userRole
-  };
-};

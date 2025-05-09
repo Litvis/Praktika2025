@@ -1,18 +1,7 @@
-import pkg from 'pg';
-import dotenv from 'dotenv';
+// db.js
+import { createPool } from './db-utils.js';
 
-dotenv.config();
-
-const { Pool } = pkg;
-
-// Create pool connection 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 10, // Maximum connections in pool
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+const pool = createPool();
 
 // Add error handling for the pool
 pool.on('error', (err) => {
