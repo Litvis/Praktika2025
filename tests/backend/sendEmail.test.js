@@ -1,17 +1,13 @@
-// tests/sendEmail.test.js
 import { jest, describe, beforeEach, test, expect } from '@jest/globals';
 
-// Save original implementations before mocking
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
 
-// Create a jest function that will define the module mock
 const mockSgMail = {
   setApiKey: jest.fn(),
   send: jest.fn().mockResolvedValue([{ statusCode: 202 }])
 };
 
-// This is crucial for mocking ES modules
 jest.mock('@sendgrid/mail', () => {
   return {
     __esModule: true,
@@ -19,12 +15,9 @@ jest.mock('@sendgrid/mail', () => {
   };
 });
 
-// Mock the actual sendEmail function instead of importing it
-// This avoids the issue with module loading and makes testing more focused
 const mockSendEmail = async (recipient, subject, message) => {
   const isValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  // Process multiple emails correctly
   const recipientsArray = recipient
     .split(',')
     .map(email => email.trim())
@@ -69,22 +62,17 @@ const mockSendEmail = async (recipient, subject, message) => {
 
 describe('sendEmail Function', () => {
   beforeEach(() => {
-    // Clear all mocks before each test
     jest.clearAllMocks();
     
-    // Mock console methods
     console.log = jest.fn();
     console.error = jest.fn();
     
-    // Mock environment variable
     process.env.SENDGRID_API_KEY = 'test-api-key';
     
-    // Call setApiKey to simulate the actual module behavior
     mockSgMail.setApiKey(process.env.SENDGRID_API_KEY);
   });
 
   afterEach(() => {
-    // Restore console
     console.log = originalConsoleLog;
     console.error = originalConsoleError;
   });
@@ -94,15 +82,12 @@ describe('sendEmail Function', () => {
   });
 
   test('should send email to a single valid recipient', async () => {
-    // Arrange
     const recipient = 'test@example.com';
     const subject = 'Test Subject';
     const message = '<p>Test Message</p>';
 
-    // Act
     await mockSendEmail(recipient, subject, message);
 
-    // Assert
     expect(mockSgMail.send).toHaveBeenCalledTimes(1);
     expect(mockSgMail.send).toHaveBeenCalledWith({
       personalizations: [
@@ -130,15 +115,12 @@ describe('sendEmail Function', () => {
   });
 
   test('should send email to multiple valid recipients', async () => {
-    // Arrange
     const recipients = 'test1@example.com, test2@example.com, test3@example.com';
     const subject = 'Test Subject';
     const message = '<p>Test Message</p>';
 
-    // Act
     await mockSendEmail(recipients, subject, message);
 
-    // Assert
     expect(mockSgMail.send).toHaveBeenCalledTimes(1);
     expect(mockSgMail.send).toHaveBeenCalledWith({
       personalizations: [
@@ -174,18 +156,14 @@ describe('sendEmail Function', () => {
   });
 
   test('should filter out invalid email addresses', async () => {
-    // Arrange
     const recipients = 'test1@example.com, invalid-email, test3@example.com';
     const subject = 'Test Subject';
     const message = '<p>Test Message</p>';
 
-    // Act
     await mockSendEmail(recipients, subject, message);
 
-    // Assert
     expect(mockSgMail.send).toHaveBeenCalledTimes(1);
     
-    // The email should only be sent to the valid addresses
     const emailData = mockSgMail.send.mock.calls[0][0];
     expect(emailData.personalizations.length).toBe(2);
     expect(emailData.personalizations[0].to[0].email).toBe('test1@example.com');
@@ -195,29 +173,23 @@ describe('sendEmail Function', () => {
   });
 
   test('should not send email when no valid recipients are provided', async () => {
-    // Arrange
     const recipients = 'invalid-email1, invalid-email2';
     const subject = 'Test Subject';
     const message = '<p>Test Message</p>';
 
-    // Act
     await mockSendEmail(recipients, subject, message);
 
-    // Assert
     expect(mockSgMail.send).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith('❌ No valid email addresses found.');
   });
 
   test('should strip HTML tags for text version', async () => {
-    // Arrange
     const recipient = 'test@example.com';
     const subject = 'Test Subject';
     const message = '<p>This is <strong>bold</strong> text</p>';
 
-    // Act
     await mockSendEmail(recipient, subject, message);
 
-    // Assert
     expect(mockSgMail.send).toHaveBeenCalledTimes(1);
     const emailData = mockSgMail.send.mock.calls[0][0];
     expect(emailData.content[0].type).toBe('text/plain');
@@ -227,12 +199,10 @@ describe('sendEmail Function', () => {
   });
 
   test('should handle errors when sending fails', async () => {
-    // Arrange
     const recipient = 'test@example.com';
     const subject = 'Test Subject';
     const message = '<p>Test Message</p>';
     
-    // Mock error from SendGrid
     const errorResponse = {
       response: {
         body: {
@@ -241,16 +211,12 @@ describe('sendEmail Function', () => {
       }
     };
     
-    // Set up the mock to reject once
     mockSgMail.send.mockRejectedValueOnce(errorResponse);
 
-    // Act & Assert
     try {
       await mockSendEmail(recipient, subject, message);
-      // If we get here, the test should fail
-      expect(true).toBe(false); // This will fail the test if the error is not thrown
+      expect(true).toBe(false);
     } catch (error) {
-      // Assert that error was logged
       expect(console.error).toHaveBeenCalled();
       expect(mockSgMail.send).toHaveBeenCalledTimes(1);
     }

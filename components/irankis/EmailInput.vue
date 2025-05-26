@@ -4,7 +4,6 @@
       Elektroninio pašto adresas
     </label>
     
-    <!-- Email input with add button -->
     <div class="flex space-x-2 mb-3">
       <input
         type="email"
@@ -27,7 +26,6 @@
       </button>
     </div>
     
-    <!-- Email tags list -->
     <div v-if="emailList.length > 0" class="flex flex-wrap gap-2 mb-2">
       <div 
         v-for="(email, index) in emailList" 
@@ -46,7 +44,6 @@
       </div>
     </div>
     
-    <!-- Email validation error message -->
     <p v-if="errorMessage" class="text-red-500 text-sm mt-1">
       {{ errorMessage }}
     </p>
@@ -69,58 +66,47 @@ const inputValue = ref('');
 const errorMessage = ref('');
 const emailList = ref([]);
 
-// Initialize the list if there's an initial recipient
 watch(() => props.recipient, (newRecipient) => {
   if (newRecipient && emailList.value.length === 0) {
-    // Split by commas if multiple recipients are provided
     const emails = newRecipient.split(',').map(email => email.trim());
     emailList.value = emails.filter(email => email !== '');
   }
 }, { immediate: true });
 
-// Validate email format
 const isValidEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
-// Add email to the list
 const addEmail = () => {
   const email = inputValue.value.trim();
   
-  // Skip if empty
   if (!email) {
     return;
   }
   
-  // Validate email format
   if (!isValidEmail(email)) {
     errorMessage.value = 'Neteisingas el. pašto formatas';
     return;
   }
   
-  // Check if email already exists in the list
   if (emailList.value.includes(email)) {
     errorMessage.value = 'Šis el. paštas jau pridėtas';
     return;
   }
   
-  // Add to list and clear input
   emailList.value.push(email);
   inputValue.value = '';
   errorMessage.value = '';
   
-  // Emit the updated list as comma-separated string
   updateRecipients();
 };
 
-// Remove email from the list
 const removeEmail = (index) => {
   emailList.value.splice(index, 1);
   updateRecipients();
 };
 
-// Update the parent component with the current list
 const updateRecipients = () => {
   const recipientString = emailList.value.join(', ');
   emit('updateRecipient', recipientString);

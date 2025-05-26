@@ -1,17 +1,14 @@
 <template>
   <div class="bg-white border-r border-gray-200 fixed z-10 sidebar-width flex flex-col shadow-sm overflow-y-auto h-screen">
-    <!-- Logo Section -->
     <div class="p-6 flex justify-center border-b border-gray-100">
       <div class="max-w-32">
         <img src="/public/uzt.jpg" alt="Logo" class="w-full h-auto rounded">
       </div>
     </div>
     
-    <!-- Navigation Menu -->
     <nav class="flex-1 pt-6 px-4">
       <p class="text-xs font-medium text-gray-400 uppercase tracking-wider px-4 mb-2">Pagrindinis</p>
       
-      <!-- Dashboard Link -->
       <RouterLink 
         to="/adminLanding" 
         class="flex items-center px-4 py-3 mb-3 rounded-lg transition-all duration-200 group"
@@ -33,7 +30,6 @@
         <span class="font-medium">Prietaisų skydelis</span>
       </RouterLink>
       
-      <!-- List Link -->
       <RouterLink 
         to="/dashboard" 
         class="flex items-center px-4 py-3 mb-3 rounded-lg transition-all duration-200 group"
@@ -55,7 +51,6 @@
         <span class="font-medium">Sąrašas</span>
       </RouterLink>
       
-      <!-- User Management Link -->
       <RouterLink 
         v-if="userStore.isAdmin"
         to="/UserManagement" 
@@ -78,7 +73,6 @@
         <span class="font-medium">Vartotojų valdymas</span>
       </RouterLink>
       
-      <!-- CSV Management Link (NEW) -->
       <RouterLink 
         v-if="userStore.isAdmin"
         to="/CsvManagement" 
@@ -101,7 +95,6 @@
         <span class="font-medium">CSV Įkėlimas</span>
       </RouterLink>
       
-      <!-- Tools Link -->
       <RouterLink 
         to="/irankis" 
         class="flex items-center px-4 py-3 mb-3 rounded-lg transition-all duration-200 group"
@@ -125,7 +118,6 @@
       </RouterLink>
     </nav>
     
-    <!-- User Section -->
     <div class="p-4 border-t border-gray-100 mt-auto">
       <div class="flex items-center px-4 py-3">
         <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
@@ -137,7 +129,6 @@
         </div>
       </div>
       
-      <!-- Logout Button -->
       <button 
         @click="logout"
         class="w-full mt-4 flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
@@ -156,11 +147,9 @@ import { useRoute } from 'vue-router';
 import { useUserStore } from '~/stores/user';
 import { computed } from 'vue';
 
-// Get current route for active link styling
 const $route = useRoute();
 const userStore = useUserStore();
 
-// Compute user initials for the avatar
 const userInitials = computed(() => {
   if (!userStore.user || !userStore.user.displayName) return 'U';
   
@@ -172,23 +161,20 @@ const userInitials = computed(() => {
   return userStore.user.displayName[0].toUpperCase();
 });
 
-// Logout function
 const logout = () => {
   userStore.logout();
 };
 </script>
   
 <style>
-/* Global CSS variables for consistent sidebar spacing across all components */
 :root {
-  --sidebar-width: 16rem; /* 64px (w-64) */
+  --sidebar-width: 16rem;
 }
 
 .sidebar-width {
   width: var(--sidebar-width);
 }
 
-/* Add a class that all main content containers can use */
 .main-content-with-sidebar {
   margin-left: var(--sidebar-width);
   width: calc(100% - var(--sidebar-width));

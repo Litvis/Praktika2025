@@ -2,13 +2,13 @@ import express from 'express';
 import sgMail from '@sendgrid/mail';
 import cors from 'cors';
 import pkg from 'pg';
-import './auth/google.js'; // Ensure Google OAuth strategy is imported
-import authRoutes from './routes/OAuth.js'; // Import OAuth routes
+import './auth/google.js';
+import authRoutes from './routes/OAuth.js';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import passport from 'passport';
 import dotenv from 'dotenv';
-import multer from 'multer'; // For handling multipart/form-data (file uploads)
+import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -20,14 +20,11 @@ import { createPool } from './db-utils.js';
 
 dotenv.config();
 
-// Set up __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Create Express app FIRST
 const app = express();
 
-// Set up PostgreSQL connection pool
 const { Pool } = pkg;
 const isLocalDatabase = (connectionString) => {
   return !connectionString || 
@@ -35,7 +32,6 @@ const isLocalDatabase = (connectionString) => {
          connectionString.includes('127.0.0.1');
 };
 
-// Configure SSL based on whether we're connecting to a local database
 const sslConfig = isLocalDatabase(process.env.DATABASE_URL) 
   ? false 
   : { rejectUnauthorized: false };
@@ -45,19 +41,17 @@ console.log(`Database connection: ${isLocalDatabase(process.env.DATABASE_URL) ? 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: sslConfig,
-  max: 10, // Maximum connections in pool
+  max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
 
-// Configure session store
 const PgStore = connectPgSimple(session);
 const sessionStore = new PgStore({
-  pool: createPool(), // Use your utility function
+  pool: createPool(),
   tableName: 'sessions',
   createTableIfMissing: true
 });
-
 
 app.use(cors({
   origin: ['https://praktika2025.vercel.app', 'http://localhost:3000'],
@@ -71,32 +65,27 @@ app.use(cors({
   ]
 }));
 
-
-// JSON and URL-encoded body parsing
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 app.set('trust proxy', 1);
 
-// In server.js where you set up the session
 app.use(session({
   store: sessionStore,
   secret: process.env.SESSION_SECRET || 'your_fallback_secret',
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    secure: false, // <-- CRITICAL: Set to false for localhost
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    secure: false,
     httpOnly: true,
-    sameSite: 'lax' // <-- Change to 'lax' for localhost
+    sameSite: 'lax'
   }
 }));
 
-// Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Routes
 app.use(googleAuthRouter);
 app.use(authRoutes);
 app.use(userManagementRoutes);
@@ -104,20 +93,17 @@ app.use(csvImportRoutes);
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
-
 app.locals.config = {
   FRONTEND_URL,
   NODE_ENV: process.env.NODE_ENV || 'development',
   API_VERSION: process.env.API_VERSION || 'v1',
 };
 
-// Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadsDir);
@@ -128,21 +114,17 @@ const storage = multer.diskStorage({
   }
 });
 
-// Create multer instance
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// Set up SendGrid API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// Add error handling for the pool
 pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client:', err);
 });
 
-// Add this debug endpoint in server.js
 app.get('/api/debug/auth', (req, res) => {
   res.json({
     session: req.session,
@@ -152,11 +134,9 @@ app.get('/api/debug/auth', (req, res) => {
   });
 });
 
-// Function to ensure users table exists
 async function ensureUsersTableExists() {
   try {
     console.log('Checking for users table...');
-    // Create a new pool for this operation using your utility
     const userPool = createPool();
     
     const checkTableResult = await userPool.query(`
@@ -181,10 +161,9 @@ async function ensureUsersTableExists() {
         );
       `);
       
-      // Insert some initial admin users if needed
       await userPool.query(`
         INSERT INTO users (email, name, role) VALUES 
-        ('utarnyba@gmail.com', 'Admin User', 'admin')
+        ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
         ON CONFLICT (email) DO NOTHING;
       `);
       
@@ -193,7 +172,6 @@ async function ensureUsersTableExists() {
       console.log('Users table already exists');
     }
     
-    // Close this pool when done
     await userPool.end();
   } catch (error) {
     console.error('Error ensuring users table exists:', error);
@@ -204,7 +182,6 @@ async function ensureUsersTableExists() {
 async function ensureSessionTableExists() {
   try {
     console.log('Checking for sessions table...');
-    // Create a new pool for this operation using your utility
     const sessionPool = createPool();
     
     const checkTableResult = await sessionPool.query(`
@@ -233,17 +210,12 @@ async function ensureSessionTableExists() {
       console.log('Sessions table already exists');
     }
     
-    // Close this pool when done
     await sessionPool.end();
   } catch (error) {
     console.error('Error ensuring sessions table exists:', error);
   }
 }
 
-
-
-
-// In server.js
 app.get('/api/check-auth', (req, res) => {
   console.log('Session data:', req.session);
   console.log('User data:', req.user);
@@ -256,7 +228,6 @@ app.get('/api/check-auth', (req, res) => {
   }
 });
 
-// Add middleware to ensure sessions table exists before processing auth routes
 app.use('/auth/*', async (req, res, next) => {
   try {
     await ensureSessionTableExists();
@@ -267,25 +238,21 @@ app.use('/auth/*', async (req, res, next) => {
   }
 });
 
-// Atnaujintas maršrutas email siuntimui su vartotojo informacija iš sesijos
 app.post('/send-email', async (req, res) => {
   const { recipient, subject, message, attachments } = req.body;
   console.log("📤 Incoming JSON request from frontend");
   console.log("Recipients count:", recipient ? recipient.split(',').length : 0);
-  console.log("Full user object:", req.user); // Pilnas vartotojo objektas
+  console.log("Full user object:", req.user);
 
   try {
-    // Gauname vartotojo informaciją iš sesijos
     const userInfo = {
       email: null,
       name: null
     };
     
-    // Patikriname, ar vartotojas yra prisijungęs
     if (req.isAuthenticated() && req.user) {
       console.log("User is authenticated, session user:", req.user);
       
-      // Tiesiogiai tikriname pilną req.user objektą
       if (req.user.emails && req.user.emails.length > 0) {
         userInfo.email = req.user.emails[0].value;
         console.log("Found email in user.emails:", userInfo.email);
@@ -323,7 +290,6 @@ app.post('/send-email', async (req, res) => {
     
     console.log("Final userInfo to be used for sending:", userInfo);
 
-    // Send email using the updated function with user info
     const emailResult = await sendEmail(
       recipient, 
       subject, 
@@ -334,9 +300,6 @@ app.post('/send-email', async (req, res) => {
       userInfo.name
     );
     
-    // Store the original user information for database records
-    // This will maintain who actually sent the email for tracking purposes
-    // Even though the actual sender used with SendGrid will be the verified email
     const senderInfo = {
       email: userInfo.email || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com',
       name: userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba'
@@ -344,7 +307,6 @@ app.post('/send-email', async (req, res) => {
     
     console.log("Sender info to be saved to DB:", senderInfo);
 
-    // Save the email data to the database
     const attachmentNames = attachments 
       ? attachments.map(a => a.filename).join(', ') 
       : null;
@@ -355,18 +317,15 @@ app.post('/send-email', async (req, res) => {
     );
     console.log("Saved to DB, record:", dbResult.rows[0]);
 
-    // Respond with success message
     res.status(200).json({ 
       success: true, 
       message: 'Email sent and saved successfully',
       statusCode: emailResult.results[0]?.statusCode || 200
     });
   } catch (error) {
-    // Enhanced error logging
     console.error('❌ Error sending email:');
     console.error('Error details:', error);
     
-    // Return meaningful error to client
     res.status(500).json({ 
       error: 'Failed to send email', 
       details: error.message || 'Unknown error',
@@ -375,7 +334,6 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
-// Endpoint to create users table if it doesn't exist
 app.get('/setup-users-table', async (req, res) => {
   try {
     console.log('Creating users table...');
@@ -389,7 +347,6 @@ app.get('/setup-users-table', async (req, res) => {
       );
     `);
     
-    // BŪTINAI PAKEISTI EL. PAŠTO ADRESĄ!!!!!!
     await pool.query(`
       INSERT INTO users (email, name, role) VALUES 
       ('administratorius@gmail.com', 'Admin User', 'admin')
@@ -403,7 +360,6 @@ app.get('/setup-users-table', async (req, res) => {
   }
 });
 
-// Add this to your server.js file
 app.get('/api/user/profile', (req, res) => {
   if (req.isAuthenticated()) {
     const userInfo = {
@@ -422,26 +378,21 @@ app.get('/api/user/profile', (req, res) => {
   }
 });
 
-// Endpoint to get dashboard stats
 app.get('/api/dashboard/stats', async (req, res) => {
   try {
-    // Get total emails count
     const countResult = await pool.query('SELECT COUNT(*) FROM messages');
     const totalEmails = parseInt(countResult.rows[0].count);
     
-    // Get the most recent email
     const lastEmailResult = await pool.query(
       'SELECT id, subject, description, created_at, recipient_email, attachments FROM messages ORDER BY created_at DESC LIMIT 1'
     );
     const lastEmail = lastEmailResult.rows[0] || null;
     
-    // Get the count of emails sent in the last 30 days
     const recentCountResult = await pool.query(
       'SELECT COUNT(*) FROM messages WHERE created_at > NOW() - INTERVAL \'30 day\''
     );
     const recentEmails = parseInt(recentCountResult.rows[0].count);
     
-    // Return all stats
     res.status(200).json({
       success: true,
       data: {
@@ -462,7 +413,6 @@ app.get('/api/emails/recent', async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
     const search = req.query.search || '';
     
-    // Tikrinti ar stulpeliai egzistuoja
     const checkEmailColumn = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
@@ -478,7 +428,6 @@ app.get('/api/emails/recent', async (req, res) => {
     const hasSenderEmail = checkEmailColumn.rows.length > 0;
     const hasSenderName = checkNameColumn.rows.length > 0;
     
-    // Modifikuoti užklausą pagal esamus stulpelius
     let query = `
       SELECT id, subject, description, created_at, recipient_email, attachments
       ${hasSenderEmail ? ', sender_email' : ''}
@@ -489,7 +438,6 @@ app.get('/api/emails/recent', async (req, res) => {
     
     const queryParams = [];
     
-    // Pridedame paieškos sąlygą, jei pateiktas paieškos terminas
     if (search) {
       let searchQuery = ` AND (
         LOWER(subject) LIKE LOWER($${queryParams.length + 1}) OR 
@@ -509,21 +457,17 @@ app.get('/api/emails/recent', async (req, res) => {
       queryParams.push(`%${search}%`);
     }
     
-    // Pridedame rikiavimą ir puslapių padalinimą
     query += ` ORDER BY created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
     queryParams.push(limit, offset);
     
-    // Gauname filtruotus el. laiškus
     const emailsResult = await pool.query(query, queryParams);
     
-    // Pridedame trūkstamus laukus, jei jų nėra duomenų bazėje
     const emails = emailsResult.rows.map(row => ({
       ...row,
       sender_email: row.sender_email || 'deividaslitvinenko4@gmail.com',
       sender_name: row.sender_name || 'Sistema'
     }));
     
-    // Gauname bendrą skaičių filtruotiems rezultatams
     let countQuery = `
       SELECT COUNT(*) 
       FROM messages 
@@ -574,26 +518,22 @@ app.get('/api/emails/recent', async (req, res) => {
 
 app.get('/setup-sender-fields', async (req, res) => {
   try {
-    // Patikriname, ar jau egzistuoja sender_email stulpelis
     const checkEmailResult = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name='messages' AND column_name='sender_email'
     `);
     
-    // Patikriname, ar jau egzistuoja sender_name stulpelis
     const checkNameResult = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name='messages' AND column_name='sender_name'
     `);
     
-    // Pradedame transakciją
     await pool.query('BEGIN');
     
     let changes = [];
     
-    // Jei sender_email stulpelio nėra, pridedame jį
     if (checkEmailResult.rows.length === 0) {
       await pool.query(
         'ALTER TABLE messages ADD COLUMN sender_email TEXT DEFAULT \'deividaslitvinenko4@gmail.com\''
@@ -601,7 +541,6 @@ app.get('/setup-sender-fields', async (req, res) => {
       changes.push('Added sender_email column');
     }
     
-    // Jei sender_name stulpelio nėra, pridedame jį
     if (checkNameResult.rows.length === 0) {
       await pool.query(
         'ALTER TABLE messages ADD COLUMN sender_name TEXT DEFAULT \'Sistema\''
@@ -609,7 +548,6 @@ app.get('/setup-sender-fields', async (req, res) => {
       changes.push('Added sender_name column');
     }
     
-    // Atnaujiname esamus įrašus numatytaisiais duomenimis, jei buvo atlikti pakeitimai
     if (changes.length > 0) {
       await pool.query(
         'UPDATE messages SET sender_email = $1, sender_name = $2 WHERE sender_email IS NULL OR sender_name IS NULL',
@@ -618,7 +556,6 @@ app.get('/setup-sender-fields', async (req, res) => {
       changes.push('Updated existing records');
     }
     
-    // Patvirtinti pakeitimus
     await pool.query('COMMIT');
     
     res.status(200).json({ 
@@ -628,19 +565,16 @@ app.get('/setup-sender-fields', async (req, res) => {
         : 'No changes needed, schema already up to date' 
     });
   } catch (error) {
-    // Atšaukti pakeitimus klaidos atveju
     await pool.query('ROLLBACK');
     console.error('❌ Error updating schema for sender fields:', error);
     res.status(500).json({ error: 'Failed to update database schema', details: error.message });
   }
 });
 
-// Endpoint to get a specific email by ID
 app.get('/api/emails/:id', async (req, res) => {
   try {
     const emailId = req.params.id;
     
-    // Tikrinti ar stulpeliai egzistuoja
     const checkEmailColumn = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
@@ -656,7 +590,6 @@ app.get('/api/emails/:id', async (req, res) => {
     const hasSenderEmail = checkEmailColumn.rows.length > 0;
     const hasSenderName = checkNameColumn.rows.length > 0;
     
-    // Modifikuoti užklausą pagal esamus stulpelius
     let query = `
       SELECT id, subject, description, created_at, recipient_email, attachments
       ${hasSenderEmail ? ', sender_email' : ''}
@@ -671,7 +604,6 @@ app.get('/api/emails/:id', async (req, res) => {
       return res.status(404).json({ error: 'Email not found' });
     }
     
-    // Pridedame trūkstamus laukus, jei jų nėra duomenų bazėje
     const email = {
       ...emailResult.rows[0],
       sender_email: emailResult.rows[0].sender_email || 'deividaslitvinenko4@gmail.com',
@@ -688,10 +620,8 @@ app.get('/api/emails/:id', async (req, res) => {
   }
 });
 
-// Endpoint to get emails stats by day (for charts)
 app.get('/api/emails/stats/daily', async (req, res) => {
   try {
-    // Get count of emails sent per day for the last 30 days
     const statsResult = await pool.query(
       `SELECT 
         DATE(created_at) as date, 
@@ -712,10 +642,8 @@ app.get('/api/emails/stats/daily', async (req, res) => {
   }
 });
 
-// Endpoint to get email recipient distribution (for charts)
 app.get('/api/emails/stats/recipients', async (req, res) => {
   try {
-    // Get count of emails sent to each recipient
     const statsResult = await pool.query(
       `SELECT 
         recipient_email, 
@@ -741,22 +669,18 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
     const { recipient, subject, message } = req.body;
     console.log("📤 Incoming multipart request from frontend");
 
-    // Gauname vartotojo informaciją iš sesijos
     const userInfo = {
       email: null,
       name: null
     };
     
-    // Jei vartotojas prisijungęs, išgauname jo informaciją
     if (req.isAuthenticated() && req.user) {
-      // Išgauname el. paštą - bandome iš kelių galimų šaltinių
       if (req.user.emails && req.user.emails.length > 0) {
         userInfo.email = req.user.emails[0].value;
       } else if (req.user.email) {
         userInfo.email = req.user.email;
       }
       
-      // Išgauname vardą - bandome iš kelių galimų šaltinių
       if (req.user.displayName) {
         userInfo.name = req.user.displayName;
       } else if (req.user.name) {
@@ -773,7 +697,6 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
     
     console.log("👤 User info from session:", userInfo);
 
-    // Validate recipient email(s)
     const recipientsArray = recipient
       ? recipient.split(',').map(email => email.trim())
       : [];
@@ -783,8 +706,6 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       return res.status(400).json({ error: 'Invalid recipient email(s)' });
     }
 
-    // IMPORTANT: Always use a verified sender with SendGrid
-    // But store the original user info for tracking purposes
     const senderEmail = process.env.VERIFIED_SENDER_EMAIL || 'deividaslitvinenko4@gmail.com';
     const senderName = userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba';
 
@@ -799,7 +720,6 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
         email: senderEmail,
         name: senderName
       },
-      // Add reply-to header with the user's email if available
       ...(userInfo.email ? { replyTo: { email: userInfo.email, name: userInfo.name || 'User' } } : {}),
       content: [
         {
@@ -813,13 +733,10 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       ]
     };
 
-    // Add attachments if files were uploaded
     if (req.files && req.files.length > 0) {
       msg.attachments = await Promise.all(req.files.map(async (file) => {
-        // Read file from disk
         const content = fs.readFileSync(file.path).toString('base64');
         
-        // Determine if this is inline or regular attachment
         const isInline = file.mimetype.startsWith('image/') && 
                         req.body.inlineImages && 
                         req.body.inlineImages.includes(file.filename);
@@ -834,34 +751,28 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
       }));
     }
 
-    // Send email via SendGrid
     await sgMail.send(msg);
     console.log("✅ Email sent successfully");
 
-    // Cleanup uploaded files after sending
     if (req.files && req.files.length > 0) {
       req.files.forEach(file => {
         fs.unlinkSync(file.path);
       });
     }
 
-    // Prepare attachment filenames for database storage
     const attachmentNames = req.files 
       ? req.files.map(file => file.originalname).join(', ') 
       : null;
 
-    // Save the original user information to the database for tracking
     const dbSenderEmail = userInfo.email || process.env.EMAIL_SENDER || 'deividaslitvinenko4@gmail.com';
     const dbSenderName = userInfo.name || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba';
 
-    // Save the email data to the database with sender information
     const dbResult = await pool.query(
       'INSERT INTO messages (subject, description, recipient_email, attachments, sender_email, sender_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [subject, message, recipient, attachmentNames, dbSenderEmail, dbSenderName]
     );
     console.log("✅ Saved to DB:", dbResult.rows[0]);
 
-    // Respond with success message
     res.status(200).json({ success: true, message: 'Email sent and saved successfully' });
   } catch (error) {
     console.error('❌ Error:', error);
@@ -869,17 +780,14 @@ app.post('/send-email-multipart', upload.array('files', 10), async (req, res) =>
   }
 });
 
-// Update the database schema to include attachments column - UPDATED to use pool instead of client
 app.get('/setup-db', async (req, res) => {
   try {
-    // Check if the attachments column exists
     const checkResult = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name='messages' AND column_name='attachments'
     `);
     
-    // If the column doesn't exist, add it
     if (checkResult.rows.length === 0) {
       await pool.query(
         'ALTER TABLE messages ADD COLUMN attachments TEXT'
@@ -894,10 +802,8 @@ app.get('/setup-db', async (req, res) => {
   }
 });
 
-// Endpoint to check if messages table exists and create it if needed
 app.get('/setup-messages', async (req, res) => {
   try {
-    // Check if messages table exists
     const checkResult = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -907,7 +813,6 @@ app.get('/setup-messages', async (req, res) => {
     `);
     
     if (!checkResult.rows[0].exists) {
-      // Create messages table if it doesn't exist with sender columns
       await pool.query(`
         CREATE TABLE messages (
           id SERIAL PRIMARY KEY,
@@ -922,7 +827,6 @@ app.get('/setup-messages', async (req, res) => {
       `);
       res.status(200).json({ success: true, message: 'Messages table created successfully with sender fields' });
     } else {
-      // Table exists, check if it has the sender columns
       const checkEmailColumn = await pool.query(`
         SELECT column_name 
         FROM information_schema.columns 
@@ -937,7 +841,6 @@ app.get('/setup-messages', async (req, res) => {
       
       let changes = [];
       
-      // Add missing columns if needed
       if (checkEmailColumn.rows.length === 0) {
         await pool.query(`
           ALTER TABLE messages 
@@ -954,7 +857,6 @@ app.get('/setup-messages', async (req, res) => {
         changes.push('Added sender_name column');
       }
       
-      // Update existing records if columns were added
       if (changes.length > 0) {
         await pool.query(`
           UPDATE messages 
@@ -985,9 +887,7 @@ app.get('/setup-messages', async (req, res) => {
 async function setupMessagesTable() {
   try {
     console.log('Checking for messages table and required columns...');
-    // Use the main pool instead of creating a new one
     
-    // Patikriname, ar egzistuoja messages lentelė
     const checkTableResult = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -997,7 +897,6 @@ async function setupMessagesTable() {
     `);
     
     if (!checkTableResult.rows[0].exists) {
-      // Sukuriame lentelę, jei jos nėra
       console.log('Creating messages table with all required columns...');
       await pool.query(`
         CREATE TABLE messages (
@@ -1013,7 +912,6 @@ async function setupMessagesTable() {
       `);
       console.log('Messages table created successfully with sender fields');
     } else {
-      // Patikriname, ar yra reikalingi stulpeliai
       const checkEmailColumn = await pool.query(`
         SELECT column_name 
         FROM information_schema.columns 
@@ -1026,7 +924,6 @@ async function setupMessagesTable() {
         WHERE table_name='messages' AND column_name='sender_name'
       `);
       
-      // Pridedame trūkstamus stulpelius
       if (checkEmailColumn.rows.length === 0) {
         console.log('Adding sender_email column to messages table...');
         await pool.query(`
@@ -1043,7 +940,6 @@ async function setupMessagesTable() {
         `);
       }
       
-      // Atnaujiname senus įrašus, jei yra stulpelių be reikšmių
       if (checkEmailColumn.rows.length === 0 || checkNameColumn.rows.length === 0) {
         console.log('Updating existing records with default sender values...');
         await pool.query(`
@@ -1063,7 +959,6 @@ async function setupMessagesTable() {
   }
 }
 
-// Endpoint to create sessions table if it doesn't exist
 app.get('/setup-sessions-table', async (req, res) => {
   try {
     console.log('Creating sessions table...');
@@ -1084,7 +979,6 @@ app.get('/setup-sessions-table', async (req, res) => {
   }
 });
 
-// Endpoint to create users table if it doesn't exist
 app.get('/setup-users-table', async (req, res) => {
   try {
     console.log('Creating users table...');
@@ -1098,7 +992,6 @@ app.get('/setup-users-table', async (req, res) => {
       );
     `);
     
-    // Insert initial admin user
     await pool.query(`
       INSERT INTO users (email, name, role) VALUES 
       ('deividaslitvinenko4@gmail.com', 'Admin User', 'admin')
@@ -1112,10 +1005,8 @@ app.get('/setup-users-table', async (req, res) => {
   }
 });
 
-// Function to manually verify and create all required tables
 app.get('/setup-all-tables', async (req, res) => {
   try {
-    // Check each table and create if needed
     const tables = [
       {
         name: 'users',
@@ -1164,10 +1055,8 @@ app.get('/setup-all-tables', async (req, res) => {
     
     const results = {};
     
-    // Process each table
     for (const table of tables) {
       try {
-        // Check if table exists
         const checkResult = await pool.query(`
           SELECT EXISTS (
             SELECT FROM information_schema.tables 
@@ -1179,7 +1068,6 @@ app.get('/setup-all-tables', async (req, res) => {
         const tableExists = checkResult.rows[0].exists;
         
         if (!tableExists) {
-          // Create table if it doesn't exist
           console.log(`Creating ${table.name} table...`);
           await pool.query(table.query);
           results[table.name] = 'Created';
@@ -1192,7 +1080,6 @@ app.get('/setup-all-tables', async (req, res) => {
       }
     }
     
-    // Ensure attachments column exists in messages table
     try {
       const checkAttachmentsResult = await pool.query(`
         SELECT column_name 
@@ -1226,14 +1113,11 @@ app.get('/setup-all-tables', async (req, res) => {
   }
 });
 
-
-// Atnaujinta startServer funkcija
 async function startServer() {
   try {
-    // Ensure tables exist first
     await ensureSessionTableExists();
     await ensureUsersTableExists();
-    await setupMessagesTable(); // Pridėtas naujas kvietimas
+    await setupMessagesTable();
 
     console.log('CORS origin configuration:', process.env.FRONTEND_URL);
     console.log('Full CORS configuration:', {
@@ -1243,7 +1127,6 @@ async function startServer() {
       allowedHeaders: ['Content-Type', 'Authorization']
     });
 
-    // Set up SendGrid 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
     const PORT = process.env.PORT || 3001;
@@ -1256,8 +1139,6 @@ async function startServer() {
   }
 }
 
-// Start the server
 startServer();
 
-// Export pool and app for other parts of the application
 export { pool, app };

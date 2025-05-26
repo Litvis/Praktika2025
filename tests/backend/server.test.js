@@ -1,21 +1,7 @@
-// tests/server.test.js
-
-/**
- * This is a special testing approach that focuses on testing the server functionality
- * without triggering the actual Google OAuth strategy implementation.
- */
-
-// Since your project is using ES modules, we need to explicitly mock modules
-// Jest hoisting doesn't work well with ES modules, so we need a different approach
-
-// First, we'll mock the dependencies we need for testing
 const mockHandlers = {};
 
-// Mock for testing route handlers
 function setupServerTest() {
-  // These are the actual route handlers we want to test
   const handlers = {
-    // Route handler for checking authentication
     checkAuth: (req, res) => {
       if (req.isAuthenticated()) {
         res.json({ authenticated: true, user: req.user });
@@ -24,12 +10,10 @@ function setupServerTest() {
       }
     },
     
-    // Route handler for sending emails
     sendEmail: async (req, res) => {
       const { recipient, subject, message, attachments } = req.body;
 
       try {
-        // Validate recipient email(s)
         const recipientsArray = recipient
           ? recipient.split(',').map(email => email.trim())
           : [];
@@ -37,8 +21,6 @@ function setupServerTest() {
         if (recipientsArray.length === 0 || recipientsArray.some(email => !email.includes('@'))) {
           return res.status(400).json({ error: 'Invalid recipient email(s)' });
         }
-
-        // For testing, we'll skip the actual email sending and DB operations
         
         res.status(200).json({ 
           success: true, 
@@ -53,7 +35,6 @@ function setupServerTest() {
       }
     },
     
-    // Route handler for user profile
     getUserProfile: (req, res) => {
       if (req.isAuthenticated()) {
         const userInfo = {
@@ -72,10 +53,8 @@ function setupServerTest() {
       }
     },
 
-    // Route handler for dashboard stats
     getDashboardStats: async (req, res) => {
       try {
-        // Mock response data for testing
         const statsData = {
           totalEmails: 100,
           recentEmails: 25,
@@ -102,16 +81,13 @@ function setupServerTest() {
   return handlers;
 }
 
-// Import Jest
 import { jest, describe, beforeEach, test, expect } from '@jest/globals';
 
 describe('Server Route Handlers', () => {
-  // Set up handlers and mock request/response objects
   const handlers = setupServerTest();
   let req, res;
   
   beforeEach(() => {
-    // Reset mocks for each test
     req = {
       body: {},
       query: {},
@@ -134,7 +110,6 @@ describe('Server Route Handlers', () => {
     };
   });
   
-  // Test authentication check route
   test('checkAuth should return user data for authenticated user', () => {
     handlers.checkAuth(req, res);
     
@@ -157,9 +132,7 @@ describe('Server Route Handlers', () => {
     });
   });
   
-  // Test sending email route
   test('sendEmail should validate recipient emails', async () => {
-    // Test invalid email
     req.body = {
       recipient: '',
       subject: 'Test Subject',
@@ -173,7 +146,6 @@ describe('Server Route Handlers', () => {
       error: 'Invalid recipient email(s)'
     });
     
-    // Test valid email
     req.body = {
       recipient: 'test@example.com',
       subject: 'Test Subject',
@@ -193,7 +165,6 @@ describe('Server Route Handlers', () => {
     });
   });
   
-  // Test user profile route
   test('getUserProfile should return profile for authenticated user', () => {
     handlers.getUserProfile(req, res);
     
@@ -225,7 +196,6 @@ describe('Server Route Handlers', () => {
     });
   });
   
-  // Test dashboard stats route
   test('getDashboardStats should return dashboard stats', async () => {
     await handlers.getDashboardStats(req, res);
     
@@ -244,7 +214,6 @@ describe('Server Route Handlers', () => {
   });
 });
 
-// Test server configuration (separately from route handlers)
 describe('Server Configuration', () => {
   test('should configure Express server correctly', () => {
     expect(true).toBe(true);

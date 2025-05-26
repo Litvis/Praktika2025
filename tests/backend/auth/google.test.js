@@ -1,28 +1,21 @@
-// tests/auth/google.test.js
 import { jest } from '@jest/globals';
 
-// Sukurti paprastus mockus
 const mockPool = {
   query: jest.fn()
 };
 
-// Mockuoti modulius
 jest.mock('../../backend/db.js', () => ({
   pool: mockPool
 }));
 
-// Testuojame
 describe('Google Authentication Functions', () => {
   
   beforeEach(() => {
-    // Išvalyti mockus prieš kiekvieną testą
     jest.clearAllMocks();
     mockPool.query.mockReset();
   });
 
-  // Testuojame serializeUser funkciją
   test('serializeUser should extract email and role from user object', () => {
-    // Sukuriame serializeUser funkciją (iš google.js failo)
     const serializeUser = (user, done) => {
       try {
         const email = user.emails && user.emails[0] ? user.emails[0].value : null;
@@ -41,20 +34,16 @@ describe('Google Authentication Functions', () => {
       }
     };
     
-    // Sukurti test callback
     const done = jest.fn();
     
-    // Sukurti test user objektą
     const user = {
       id: 1,
       emails: [{ value: 'test@example.com' }],
       role: 'admin'
     };
     
-    // Iškviesti serializeUser
     serializeUser(user, done);
     
-    // Tikrinti rezultatus
     expect(done).toHaveBeenCalledWith(null, {
       id: 1,
       email: 'test@example.com',
@@ -62,7 +51,6 @@ describe('Google Authentication Functions', () => {
     });
   });
 
-  // Testuojame nevalidaus vartotojo elgesį
   test('serializeUser should handle missing email', () => {
     const serializeUser = (user, done) => {
       try {
@@ -85,7 +73,6 @@ describe('Google Authentication Functions', () => {
     const done = jest.fn();
     const invalidUser = {
       id: 2,
-      // nėra emails array
       role: 'worker'
     };
     
@@ -95,7 +82,6 @@ describe('Google Authentication Functions', () => {
     expect(done.mock.calls[0][0].message).toBe('No email found for user');
   });
 
-  // Testuojame deserializeUser funkciją
   test('deserializeUser should fetch user from database and transform data', async () => {
     const deserializeUser = async (userData, done) => {
       try {
@@ -103,7 +89,6 @@ describe('Google Authentication Functions', () => {
           return done(new Error('Invalid user data'));
         }
     
-        // Mockuoti duomenų bazės atsakymą
         mockPool.query.mockImplementationOnce(() => Promise.resolve({
           rows: [{
             id: 1,
@@ -140,13 +125,11 @@ describe('Google Authentication Functions', () => {
     
     await deserializeUser(userData, done);
     
-    // Tikrinti SQL užklausą
     expect(mockPool.query).toHaveBeenCalledWith(
       'SELECT * FROM users WHERE email = $1',
       ['test@example.com']
     );
     
-    // Tikrinti transformuotus duomenis
     expect(done).toHaveBeenCalledWith(null, {
       id: 1,
       name: {
@@ -159,7 +142,6 @@ describe('Google Authentication Functions', () => {
     });
   });
   
-  // Testuojame OAuth callback funkcijos pagrindines dalis
   test('OAuth callback should handle invalid profile data', async () => {
     const googleCallback = async (request, accessToken, refreshToken, profile, done) => {
       try {
@@ -167,7 +149,6 @@ describe('Google Authentication Functions', () => {
           return done(null, false, { message: 'Invalid profile information' });
         }
         
-        // Tolimesnis kodas nereikalingas šiam testui...
         done(null, {});
       } catch (error) {
         done(error);
@@ -175,7 +156,7 @@ describe('Google Authentication Functions', () => {
     };
     
     const done = jest.fn();
-    const invalidProfile = { id: '12345' }; // Nėra emails laukelio
+    const invalidProfile = { id: '12345' };
     
     await googleCallback({}, 'token', 'refresh', invalidProfile, done);
     
@@ -185,7 +166,6 @@ describe('Google Authentication Functions', () => {
   });
   
   test('OAuth callback should create new user if not found', async () => {
-    // Imituoti OAuth callback funkciją
     const googleCallback = async (request, accessToken, refreshToken, profile, done) => {
       try {
         if (!profile || !profile.emails || !profile.emails[0]) {
@@ -194,9 +174,8 @@ describe('Google Authentication Functions', () => {
     
         const userEmail = profile.emails[0].value;
         
-        // Mockuoti kad vartotojas nerastas
         mockPool.query.mockImplementationOnce(() => Promise.resolve({
-          rows: [] // Tuščias masyvas = vartotojas nerastas
+          rows: []
         }));
         
         const userResult = await mockPool.query(
@@ -205,7 +184,6 @@ describe('Google Authentication Functions', () => {
         );
         
         if (userResult.rows.length === 0) {
-          // Mockuoti naujo vartotojo sukūrimą
           const displayName = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
           
           mockPool.query.mockImplementationOnce(() => Promise.resolve({
@@ -242,7 +220,6 @@ describe('Google Authentication Functions', () => {
           return done(null, normalizedUser);
         }
         
-        // Ši dalis nevykdoma esant tuščiam `rows` masyvui
         done(null, {});
       } catch (error) {
         done(error);
@@ -251,7 +228,6 @@ describe('Google Authentication Functions', () => {
     
     const done = jest.fn();
     
-    // Sukurti Google profilio imitaciją
     const profile = {
       id: '123456789',
       displayName: 'New User',
@@ -264,16 +240,13 @@ describe('Google Authentication Functions', () => {
     
     await googleCallback({}, 'token', 'refresh', profile, done);
     
-    // Tikrinti ar įvykdytos abi užklausos
     expect(mockPool.query).toHaveBeenCalledTimes(2);
     
-    // Tikrinti INSERT užklausą
     expect(mockPool.query).toHaveBeenNthCalledWith(2,
       'INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING *',
       ['new@example.com', 'New User', 'worker']
     );
     
-    // Tikrinti ar callback grąžino teisingą vartotoją
     expect(done).toHaveBeenCalledWith(null, expect.objectContaining({
       id: 2,
       emails: profile.emails,

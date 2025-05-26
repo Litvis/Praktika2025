@@ -1,15 +1,12 @@
-// tests/frontend/pages/dashboard.test.js
 import { mount, config } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { nextTick } from 'vue';
 
-// Configure test environment
 config.global.stubs = {
   transition: false,
   'router-link': true
 };
 
-// Mock the components
 vi.mock('~/components/adminlanding/Sidebar.vue', () => ({
   default: {
     name: 'Sidebar',
@@ -17,20 +14,16 @@ vi.mock('~/components/adminlanding/Sidebar.vue', () => ({
   }
 }));
 
-// Mock the user store
 vi.mock('~/stores/user', () => ({
   useUserStore: vi.fn()
 }));
 
-// Mock vue-router
 vi.mock('vue-router', () => ({
   useRouter: vi.fn()
 }));
 
-// Mock fetch API
 global.fetch = vi.fn();
 
-// Import after mocks
 import { useUserStore } from '~/stores/user';
 import { useRouter } from 'vue-router';
 
@@ -38,22 +31,18 @@ describe('Dashboard Page', () => {
   let wrapper;
   let mockUserStore;
   let mockRouter;
-  let DashboardStub; // Define this at the scope level so it's accessible in all tests
+  let DashboardStub;
   
   beforeEach(() => {
-    // Reset mocks
     vi.clearAllMocks();
 
-    // Setup DOM elements needed for tests
     document.body.innerHTML = '<div id="app"></div>';
     
-    // Setup router mock
     mockRouter = {
       push: vi.fn()
     };
     vi.mocked(useRouter).mockReturnValue(mockRouter);
     
-    // Setup user store with default values
     mockUserStore = {
       isLoading: false,
       isAdmin: true,
@@ -62,7 +51,6 @@ describe('Dashboard Page', () => {
     };
     vi.mocked(useUserStore).mockReturnValue(mockUserStore);
     
-    // Mock fetch response with sample data
     global.fetch.mockResolvedValue({
       json: vi.fn().mockResolvedValue({
         success: true,
@@ -93,17 +81,14 @@ describe('Dashboard Page', () => {
       ok: true
     });
     
-    // Create a stub component for the dashboard page
     DashboardStub = {
       template: `
       <div>
-        <!-- Loading overlay -->
         <div v-if="isCheckingAccess" class="loading-overlay fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
           <div class="w-16 h-16 border-4 border-gray-300 border-t-green-600 rounded-full mb-4"></div>
           <p class="text-gray-600 text-lg">Tikrinamos teisės...</p>
         </div>
 
-        <!-- Actual page content -->
         <div v-else class="page-content">
           <div class="mock-sidebar">Sidebar</div>
           
@@ -141,7 +126,6 @@ describe('Dashboard Page', () => {
               </button>
             </div>
             
-            <!-- Table -->
             <div class="email-table">
               <div class="email-table-header">
                 <div>ID</div>
@@ -179,7 +163,6 @@ describe('Dashboard Page', () => {
               </div>
             </div>
             
-            <!-- Pagination -->
             <div class="pagination">
               <div class="pagination-info">
                 Rodoma {{ ((currentPage - 1) * itemsPerPage) + 1 }}-{{ Math.min(currentPage * itemsPerPage, totalEmails) }} iš {{ totalEmails }} įrašų
@@ -316,8 +299,6 @@ describe('Dashboard Page', () => {
         },
         exportEmails() {
           fetch(`https://praktika2025.onrender.com/api/emails/recent?limit=1000&dateFilter=${this.dateFilter}`);
-          // In a real test, we would need to mock document.createElement and other DOM methods
-          // but for our test purposes, we'll just check that fetch was called
         }
       },
       mounted() {
@@ -326,18 +307,15 @@ describe('Dashboard Page', () => {
       }
     };
     
-    // Spy on console.log and console.error
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
     
-    // Mount the component
     wrapper = mount(DashboardStub, {
       attachTo: document.getElementById('app')
     });
   });
   
   afterEach(() => {
-    // Clean up
     wrapper.unmount();
     vi.clearAllMocks();
   });
@@ -346,10 +324,8 @@ describe('Dashboard Page', () => {
     expect(wrapper.find('h1').text()).toBe('Sąrašas');
     expect(wrapper.find('.mock-sidebar').exists()).toBe(true);
     
-    // Should show correct total count
     expect(wrapper.find('.email-count').text()).toContain('42');
     
-    // Should display email rows
     const emailRows = wrapper.findAll('.email-row');
     expect(emailRows.length).toBe(2);
   });
@@ -361,97 +337,74 @@ describe('Dashboard Page', () => {
   });
   
   it('should handle search functionality', async () => {
-    // Clear previous fetch calls
     global.fetch.mockClear();
     
-    // Update search query
     await wrapper.find('.search-input').setValue('test query');
     await wrapper.find('.search-input').trigger('input');
     
-    // Manually call the search handler since debounce won't work in tests
     await wrapper.vm.handleSearch();
     
-    // Verify fetch was called with search parameter
     expect(global.fetch).toHaveBeenCalled();
     const url = global.fetch.mock.calls[0][0];
     expect(url).toContain('search=test');
     
-    // Verify page was reset to 1
     expect(wrapper.vm.currentPage).toBe(1);
   });
   
   it('should handle date filter changes', async () => {
-    // Clear previous fetch calls
     global.fetch.mockClear();
     
-    // Change date filter
     await wrapper.find('.date-filter').setValue('week');
     await wrapper.find('.date-filter').trigger('change');
     
-    // Verify fetch was called with date filter
     expect(global.fetch).toHaveBeenCalled();
     const url = global.fetch.mock.calls[0][0];
     expect(url).toContain('dateFilter=week');
   });
   
   it('should handle pagination', async () => {
-    // Clear previous fetch calls
     global.fetch.mockClear();
     
-    // Initial page should be 1
     expect(wrapper.vm.currentPage).toBe(1);
     
-    // Click next page button
     await wrapper.find('.next-page-button').trigger('click');
     
-    // Current page should be 2
     expect(wrapper.vm.currentPage).toBe(2);
     
-    // Verify fetch was called with correct offset
     expect(global.fetch).toHaveBeenCalled();
     const url = global.fetch.mock.calls[0][0];
     expect(url).toContain('offset=10');
   });
   
   it('should navigate to email details when view button is clicked', async () => {
-    // Click the view button on the first email
     await wrapper.find('.view-email-button').trigger('click');
     
-    // Verify router push was called with correct path
     expect(mockRouter.push).toHaveBeenCalledWith('/emails/1');
   });
   
   it('should export emails when export button is clicked', async () => {
-    // Clear previous fetch calls
     global.fetch.mockClear();
     
-    // Click export button
     await wrapper.find('.export-button').trigger('click');
     
-    // Verify fetch was called with export parameters
     expect(global.fetch).toHaveBeenCalled();
     const url = global.fetch.mock.calls[0][0];
     expect(url).toContain('limit=1000');
   });
   
   it('should redirect to unauthorized page if user is not admin', async () => {
-    // Unmount the previous wrapper
     if (wrapper) {
       wrapper.unmount();
     }
     
-    // Set user as not admin
     mockUserStore.isAdmin = false;
     
-    // Create a new wrapper with the same stub
     wrapper = mount(DashboardStub, {
       attachTo: document.getElementById('app')
     });
     
-    // Call the method directly
     wrapper.vm.checkAdminAccess();
     
-    // Verify redirect was called
     expect(mockRouter.push).toHaveBeenCalledWith('/unauthorised');
   });
   
@@ -459,7 +412,6 @@ describe('Dashboard Page', () => {
     const paginationInfo = wrapper.find('.pagination-info');
     expect(paginationInfo.text()).toContain('Rodoma 1-10 iš 42 įrašų');
     
-    // Update page to 5 (which would be emails 41-42)
     wrapper.vm.currentPage = 5;
     await nextTick();
     
@@ -467,7 +419,6 @@ describe('Dashboard Page', () => {
   });
   
   it('should show no emails message when there are no emails', async () => {
-    // Update emails to empty array
     wrapper.vm.emails = [];
     await nextTick();
     

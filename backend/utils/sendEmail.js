@@ -8,33 +8,18 @@ const setupSendGrid = () => {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 };
 
-// Helper function to validate emails
 const isValidEmail = (email) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
-/**
- * Siunčia el. laišką naudojant SendGrid API
- * @param {string} recipient - Gavėjo el. pašto adresas(-ai) atskirti kableliu
- * @param {string} subject - El. laiško tema
- * @param {string} message - El. laiško turinys (gali būti HTML)
- * @param {Array} attachments - Priedų masyvas
- * @param {Object} config - Konfigūracijos objektas
- * @param {string} userEmail - Vartotojo el. pašto adresas iš sesijos (neprivalomas)
- * @param {string} userName - Vartotojo vardas iš sesijos (neprivalomas)
- * @returns {Promise} Promise objektas su SendGrid atsakymu
- */
 export const sendEmail = async (recipient, subject, message, attachments = [], config = {}, userEmail = null, userName = null) => {
-  // IMPORTANT: Always use a verified sender email with SendGrid
   const senderEmail = process.env.VERIFIED_SENDER_EMAIL || 'deividaslitvinenko4@gmail.com';
   
-  // Nustatome siuntėjo vardą - pirmiau imame vartotojo vardą, jei yra
   const senderName = userName || config?.EMAIL_SENDER_NAME || process.env.EMAIL_SENDER_NAME || 'Užimtumo tarnyba';
   
   try {
     setupSendGrid();
     
-    // Validate recipient email(s)
     const recipientsArray = recipient
       ? recipient.split(',').map(email => email.trim()).filter(isValidEmail)
       : [];
@@ -49,8 +34,7 @@ export const sendEmail = async (recipient, subject, message, attachments = [], c
       console.log(`📧 Reply-To: ${userName || 'User'} <${userEmail}>`);
     }
     
-    // Batch recipients if there are too many (SendGrid has limits)
-    const BATCH_SIZE = 100; // SendGrid recommends batching for large recipient lists
+    const BATCH_SIZE = 100;
     const batches = [];
     
     for (let i = 0; i < recipientsArray.length; i += BATCH_SIZE) {
@@ -59,7 +43,6 @@ export const sendEmail = async (recipient, subject, message, attachments = [], c
     
     const results = [];
     
-    // Process each batch
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
       console.log(`📧 Processing batch ${i+1}/${batches.length} with ${batch.length} recipients`);
@@ -75,7 +58,6 @@ export const sendEmail = async (recipient, subject, message, attachments = [], c
           email: senderEmail,
           name: senderName
         },
-        // Add reply-to if user email is provided
         ...(userEmail ? { replyTo: { email: userEmail, name: userName || 'User' } } : {}),
         content: [
           {
@@ -89,10 +71,9 @@ export const sendEmail = async (recipient, subject, message, attachments = [], c
         ]
       };
 
-      // Add attachments if they exist
       if (attachments && attachments.length > 0) {
         msg.attachments = attachments.map(attachment => ({
-          content: attachment.content, // Base64 content
+          content: attachment.content,
           filename: attachment.filename,
           type: attachment.type,
           disposition: attachment.disposition || 'attachment',
@@ -100,14 +81,11 @@ export const sendEmail = async (recipient, subject, message, attachments = [], c
         }));
       }
 
-      // Send email via SendGrid and collect response
       const [response] = await sgMail.send(msg);
       results.push(response);
       
-      // Log batch results
       console.log(`✅ Batch ${i+1} sent successfully with status code: ${response.statusCode}`);
       
-      // Optional: Add a small delay between batches to avoid rate limits
       if (i < batches.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }

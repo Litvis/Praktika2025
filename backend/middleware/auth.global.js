@@ -1,5 +1,4 @@
 export default defineNuxtRouteMiddleware(async (to, from) => {
-  // Skip middleware for debug pages
   if (to.path === '/debug') {
     console.log('Skipping auth middleware for debug page');
     return;
@@ -8,7 +7,6 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   console.log('Auth middleware running for path:', to.path);
   const userStore = useUserStore();
   
-  // Skip middleware for public pages
   if (to.path === '/login' || to.path === '/unauthorized' || to.path === '/authorising') {
     console.log('Skipping auth check for public page:', to.path);
     return;
@@ -21,7 +19,6 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     isLoading: userStore.isLoading
   });
 
-  // CRITICAL: Make sure we always fetch the profile
   try {
     console.log('Fetching user profile in middleware');
     await userStore.fetchUserProfile();
@@ -35,19 +32,16 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     isPending: userStore.isPending
   });
 
-  // If user is not authenticated, redirect to login
   if (!userStore.isAuthenticated) {
     console.log('User not authenticated, redirecting to login');
     return navigateTo('/login');
   }
 
-  // Check if user is pending approval and redirect to authorising page
   if (userStore.isPending && to.path !== '/authorising') {
     console.log('User is pending approval, redirecting to authorising page');
     return navigateTo('/authorising');
   }
 
-  // Admin permission checks
   const adminOnlyPaths = [
     '/dashboard',
     '/admin',

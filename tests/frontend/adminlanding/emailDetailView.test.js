@@ -1,25 +1,20 @@
-// tests/frontend/adminlanding/emailDetailView.test.js
 import { mount, flushPromises } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createRouter, createMemoryHistory } from 'vue-router'; // Changed to memory history
+import { createRouter, createMemoryHistory } from 'vue-router';
 
 
-
-// Mock DOMPurify
 vi.mock('dompurify', () => ({
   default: {
     sanitize: vi.fn((content) => content)
   }
 }));
 
-// Mock the Sidebar component
 vi.mock('../../../components/adminlanding/Sidebar.vue', () => ({
   default: {
     template: '<div class="sidebar-mock"></div>'
   }
 }));
 
-// Create a mock router with components to avoid warnings
 const routes = [
   { 
     path: '/emails', 
@@ -35,14 +30,12 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createMemoryHistory(), // Using memory history for tests
+  history: createMemoryHistory(),
   routes
 });
 
-// Mock fetch globally
 global.fetch = vi.fn();
 
-// Simulate a simple response for simplicity
 const mockEmailData = {
   success: true,
   data: {
@@ -56,7 +49,6 @@ const mockEmailData = {
 };
 
 describe('EmailDetailView Component', () => {
-  // Create a simplified mock component that matches the structure of your real one
   const EmailDetailViewStub = {
     template: `
     <div>
@@ -93,7 +85,6 @@ describe('EmailDetailView Component', () => {
     },
     methods: {
       async goBack() {
-        // Use a simpler approach for testing
         console.log('Navigating back to /emails');
         this.$emit('navigate', '/emails');
       },
@@ -101,7 +92,6 @@ describe('EmailDetailView Component', () => {
         try {
           this.isLoading = true;
           
-          // Simulate fetch - use props.id or default
           const emailId = this.id || '1';
           const response = await fetch(`/api/emails/${emailId}`);
           const data = await response.json();
@@ -126,12 +116,8 @@ describe('EmailDetailView Component', () => {
   
   let wrapper;
   
-  beforeEach(() => { // Removed async
+  beforeEach(() => { 
     vi.clearAllMocks();
-    
-    // Removed router.isReady() call
-    
-    // Set default mock fetch response
     fetch.mockResolvedValue({
       json: () => Promise.resolve(mockEmailData)
     });
@@ -142,7 +128,6 @@ describe('EmailDetailView Component', () => {
   });
 
   it('should show loading state initially', async () => {
-    // Mock a delayed response to test loading state
     fetch.mockImplementationOnce(() => 
       new Promise(resolve => {
         setTimeout(() => {
@@ -162,17 +147,13 @@ describe('EmailDetailView Component', () => {
       }
     });
     
-    // Initial state should show loading
     expect(wrapper.find('.loading').exists()).toBe(true);
     
-    // Wait some time for the delayed fetch to complete
     await new Promise(resolve => setTimeout(resolve, 200));
     await flushPromises();
     
-    // Now update the component
     await wrapper.vm.$nextTick();
     
-    // Loading indicator should be gone
     expect(wrapper.find('.loading').exists()).toBe(false);
   });
 
@@ -186,22 +167,18 @@ describe('EmailDetailView Component', () => {
       }
     });
     
-    // Wait for fetch to complete
     await flushPromises();
     
-    // Check email content
     expect(wrapper.find('h1').text()).toBe('Test Email Subject');
     expect(wrapper.text()).toContain('Gavėjas: test@example.com');
     expect(wrapper.html()).toContain('This is a test email content');
     
-    // Check attachments
     const attachments = wrapper.findAll('.flex');
     expect(attachments.length).toBe(2);
     expect(attachments[0].text()).toContain('attachment1.pdf');
   });
 
   it('should handle API errors', async () => {
-    // Mock an error response
     fetch.mockRejectedValueOnce(new Error('Failed to fetch email'));
     
     wrapper = mount(EmailDetailViewStub, {
@@ -213,10 +190,7 @@ describe('EmailDetailView Component', () => {
       }
     });
     
-    // Wait for error handling
     await flushPromises();
-    
-    // Should show error message
     expect(wrapper.find('.bg-red-100').exists()).toBe(true);
     expect(wrapper.text()).toContain('Failed to fetch email');
   });
@@ -231,13 +205,10 @@ describe('EmailDetailView Component', () => {
       }
     });
     
-    // Wait for component to load
     await flushPromises();
     
-    // Find and click the back button
     await wrapper.find('button').trigger('click');
     
-    // Check if navigation event was emitted with the correct path
     expect(wrapper.emitted()).toHaveProperty('navigate');
     expect(wrapper.emitted().navigate[0]).toEqual(['/emails']);
   });

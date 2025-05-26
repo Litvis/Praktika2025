@@ -1,23 +1,18 @@
 <template>
-  <!-- Loading overlay that appears immediately on page load -->
   <div v-if="isCheckingAccess" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
     <div class="w-16 h-16 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin mb-4"></div>
     <p class="text-gray-600 text-lg">Tikrinamos teisės...</p>
   </div>
 
-  <!-- Actual page content (only shown after verification) -->
   <div v-else class="flex h-screen bg-gray-50">
     <Sidebar />
     <div class="main-content-with-sidebar flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
-      <!-- Header Section -->
       <div class="px-8 py-6">
         <h1 class="font-bold text-4xl text-gray-800">Sąrašas</h1>
         <p class="text-gray-500 mt-2">Siųstų laiškų istorija ({{ totalEmails }})</p>
       </div>
       
-      <!-- Table Container -->
       <div class="px-8 pb-8">
-        <!-- Search and Filter -->
         <div class="flex justify-between items-center mb-6">
           <div class="relative w-64">
             <input 
@@ -58,7 +53,6 @@
           </div>
         </div>
         
-        <!-- Table Header -->
         <div class="bg-white rounded-t-lg border border-gray-200 shadow-sm overflow-hidden">
           <div class="grid grid-cols-5 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-200">
             <div class="font-semibold text-gray-600">ID</div>
@@ -68,7 +62,6 @@
             <div class="font-semibold text-gray-600 text-center">Veiksmai</div>
           </div>
           
-          <!-- Table Body -->
           <div v-if="emails.length === 0" class="p-8 text-center text-gray-500">
             Nėra laiškų rodymui
           </div>
@@ -113,7 +106,6 @@
           </div>
         </div>
         
-        <!-- Pagination -->
         <div class="flex justify-between items-center mt-6">
           <div class="text-sm text-gray-600">
             Rodoma {{ ((currentPage - 1) * itemsPerPage) + 1 }}-{{ Math.min(currentPage * itemsPerPage, totalEmails) }} iš {{ totalEmails }} įrašų
@@ -174,35 +166,28 @@ import { onMounted, watch, ref, computed } from 'vue';
 const userStore = useUserStore();
 const router = useRouter();
 
-// Add state for access checking
 const isCheckingAccess = ref(true);
 
-// Enhanced admin access check function
 async function checkAdminAccess() {
   console.log('Checking admin access in component', {
     isLoading: userStore.isLoading,
     isAdmin: userStore.isAdmin
   });
   
-  // If still loading, wait for it to complete
   if (userStore.isLoading) {
     return;
   }
   
-  // If not admin, redirect immediately
   if (!userStore.isAdmin) {
     console.log('Prieeiga negalima - neturi administratoriaus teisių');
     router.push('/unauthorised');
     return;
   }
   
-  // Access granted, hide loading overlay
   isCheckingAccess.value = false;
 }
 
-// This will run on component mount
 onMounted(() => {
-  // Force a fetch of user data if needed
   if (!userStore.user && !userStore.isLoading) {
     userStore.fetchUserProfile().then(() => {
       checkAdminAccess();
@@ -212,19 +197,16 @@ onMounted(() => {
   }
 });
 
-// This will run whenever the isAdmin state changes
 watch(() => userStore.isAdmin, () => {
   checkAdminAccess();
 });
 
-// This will run whenever the isLoading state changes
 watch(() => userStore.isLoading, () => {
   if (!userStore.isLoading) {
     checkAdminAccess();
   }
 });
 
-// Reactive state
 const emails = ref([]);
 const totalEmails = ref(0);
 const currentPage = ref(1);
@@ -235,15 +217,11 @@ const isLoading = ref(false);
 const config = useRuntimeConfig();
 const apiBase = config.public.apiBase;
 
-// Fetch emails from the backend
 const fetchEmails = async () => {
   try {
     isLoading.value = true;
-    
-    // Calculate offset for pagination
     const offset = (currentPage.value - 1) * itemsPerPage;
     
-    // Build query parameters
     const params = new URLSearchParams();
     params.append('limit', itemsPerPage.toString());
     params.append('offset', offset.toString());
@@ -256,7 +234,6 @@ const fetchEmails = async () => {
       params.append('dateFilter', dateFilter.value);
     }
     
-    // Fetch data from API
     const response = await fetch(`${apiBase}/api/emails/recent?${params.toString()}`);
     const data = await response.json();
     
@@ -273,17 +250,15 @@ const fetchEmails = async () => {
   }
 };
 
-// Handle search with debounce
 let searchTimeout;
 const handleSearch = () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    currentPage.value = 1; // Reset to first page when searching
+    currentPage.value = 1;
     fetchEmails();
   }, 300);
 };
 
-// Format date and time
 const formatDay = (date) => {
   return date.toLocaleDateString('lt-LT', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
@@ -292,10 +267,8 @@ const formatTime = (date) => {
   return date.toLocaleTimeString('lt-LT', { hour: '2-digit', minute: '2-digit' });
 };
 
-// Pagination logic
 const totalPages = computed(() => Math.ceil(totalEmails.value / itemsPerPage));
 
-// Enhanced pagination controls with ellipsis for many pages
 const displayedPages = computed(() => {
   if (totalPages.value <= 7) {
     return Array.from({ length: totalPages.value }, (_, i) => i + 1);
@@ -331,27 +304,23 @@ const goToPage = (page) => {
   fetchEmails();
 };
 
-// View email details
 const viewEmail = (id) => {
   router.push(`/emails/${id}`);
 };
 
-// Export emails as CSV
 const exportEmails = async () => {
   try {
-    // Fetch all emails for export (without pagination)
     const response = await fetch(`${apiBase}/api/emails/recent?limit=1000&dateFilter=${dateFilter.value}`);
     const data = await response.json();
     
     if (data.success) {
-      // Convert to CSV format
       const headers = ['ID', 'Tema', 'Gavėjas', 'Išsiuntimo laikas', 'Priedai'];
       const csvRows = [headers.join(',')];
       
       data.data.emails.forEach(email => {
         const row = [
           email.id,
-          `"${email.subject.replace(/"/g, '""')}"`, // Escape quotes
+          `"${email.subject.replace(/"/g, '""')}"`,
           email.recipient_email,
           new Date(email.created_at).toLocaleString('lt-LT'),
           email.attachments ? 'Taip' : 'Ne'
@@ -361,7 +330,6 @@ const exportEmails = async () => {
       
       const csvContent = csvRows.join('\n');
       
-      // Create download link
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -377,7 +345,6 @@ const exportEmails = async () => {
   }
 };
 
-// Load data when component mounts
 onMounted(() => {
   fetchEmails();
 });

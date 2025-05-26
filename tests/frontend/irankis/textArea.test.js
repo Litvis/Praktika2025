@@ -1,9 +1,7 @@
-// tests/frontend/irankis/textArea.test.js
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { nextTick } from 'vue';
 
-// Mock the Icon component
 vi.mock('@iconify/vue', () => ({
   Icon: {
     render: () => {},
@@ -11,21 +9,17 @@ vi.mock('@iconify/vue', () => ({
   }
 }));
 
-// Mock interactjs
 vi.mock('interactjs', () => ({
   default: () => ({
     draggable: () => ({ resizable: () => {} })
   })
 }));
 
-// Mock document.execCommand
 document.execCommand = vi.fn();
 
-// Mock window.prompt for hyperlink testing
 global.prompt = vi.fn();
 
 describe('TextArea Component', () => {
-  // Create a simplified version of the TextArea component
   const TextAreaStub = {
     template: `
     <div class="text-area-container">
@@ -118,12 +112,10 @@ describe('TextArea Component', () => {
       const inlineImages = ref([]);
       const attachedFilesInternal = ref([]);
 
-      // Watch for changes in props.attachedFiles and sync with internal state
       watch(() => props.attachedFiles, (newFiles) => {
         attachedFilesInternal.value = [...newFiles];
       }, { immediate: true });
 
-      // Function to handle the editor focus
       const focusEditor = () => {
         isEditorFocused.value = true;
       };
@@ -219,16 +211,14 @@ describe('TextArea Component', () => {
     }
   };
 
-  // Import Vue functions
   const { ref, watch } = require('vue');
 
   let wrapper;
   
   beforeEach(() => {
-    // Reset mocks
+
     vi.clearAllMocks();
-    
-    // Create the wrapper with initial props
+
     wrapper = mount(TextAreaStub, {
       props: {
         subject: '',
@@ -243,7 +233,6 @@ describe('TextArea Component', () => {
       }
     });
 
-    // Mock document.getElementById
     document.getElementById = vi.fn().mockImplementation((id) => {
       if (id === 'editor') {
         return wrapper.find('.editor-area').element;
@@ -270,7 +259,6 @@ describe('TextArea Component', () => {
   it('should emit updateMessage when editor content changes', async () => {
     const editor = wrapper.find('.editor-area');
     
-    // Set editor content
     editor.element.innerHTML = '<p>Test content</p>';
     await editor.trigger('input');
     
@@ -306,7 +294,6 @@ describe('TextArea Component', () => {
   });
 
   it('should add hyperlink when hyperlink button is clicked', async () => {
-    // Mock prompt to return a URL
     prompt.mockReturnValue('example.com');
     
     await wrapper.find('.hyperlink-btn').trigger('click');
@@ -319,11 +306,9 @@ describe('TextArea Component', () => {
   it('should handle file upload when files are selected', async () => {
     const fileInput = wrapper.find('#fileInput');
     
-    // Create test file objects
     const file1 = new File(['test content'], 'test.txt', { type: 'text/plain' });
     const file2 = new File(['test image'], 'image.jpg', { type: 'image/jpeg' });
     
-    // Mock the files array in the input
     Object.defineProperty(fileInput.element, 'files', {
       value: [file1, file2],
       writable: false
@@ -331,36 +316,30 @@ describe('TextArea Component', () => {
     
     await fileInput.trigger('change');
     
-    // Check if files are added to internal state
     expect(wrapper.vm.attachedFilesInternal).toHaveLength(2);
     expect(wrapper.vm.attachedFilesInternal[0].name).toBe('test.txt');
     expect(wrapper.vm.attachedFilesInternal[1].name).toBe('image.jpg');
     
-    // Check if updateAttachedFiles event was emitted
+
     expect(wrapper.emitted()).toHaveProperty('updateAttachedFiles');
     expect(wrapper.emitted().updateAttachedFiles[0][0]).toHaveLength(2);
   });
 
   it('should remove attachment when remove button is clicked', async () => {
-    // First, add some files
     wrapper.vm.attachedFilesInternal = [
       new File(['test1'], 'test1.txt', { type: 'text/plain' }),
       new File(['test2'], 'test2.txt', { type: 'text/plain' })
     ];
     await nextTick();
-    
-    // Check if attachment list is rendered
+
     expect(wrapper.find('.attachment-list').exists()).toBe(true);
     expect(wrapper.findAll('.attachment-item')).toHaveLength(2);
-    
-    // Click remove button on first attachment
+
     await wrapper.find('.remove-attachment-btn').trigger('click');
-    
-    // Check if attachment was removed
+
     expect(wrapper.vm.attachedFilesInternal).toHaveLength(1);
     expect(wrapper.vm.attachedFilesInternal[0].name).toBe('test2.txt');
-    
-    // Check if updateAttachedFiles event was emitted
+
     expect(wrapper.emitted().updateAttachedFiles).toBeDefined();
   });
 

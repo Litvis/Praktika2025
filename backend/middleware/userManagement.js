@@ -3,7 +3,6 @@ import { pool } from '../db.js';
 
 const router = express.Router();
 
-// Middleware to check for admin role
 const requireAdmin = (req, res, next) => {
   if (req.isAuthenticated() && req.user.role === 'admin') {
     return next();
@@ -12,7 +11,6 @@ const requireAdmin = (req, res, next) => {
   return res.status(403).json({ success: false, error: 'Access denied. Admin role required.' });
 };
 
-// Get all users with pagination and filtering
 router.get('/api/admin/users', requireAdmin, async (req, res) => {
   const { FRONTEND_URL } = req.app.locals.config;
   try {
@@ -25,7 +23,6 @@ router.get('/api/admin/users', requireAdmin, async (req, res) => {
     const params = [];
     let paramIndex = 1;
 
-    // Add search condition if search term is provided
     if (search) {
       query += ` AND (
         LOWER(email) LIKE LOWER($${paramIndex}) OR 
@@ -35,21 +32,17 @@ router.get('/api/admin/users', requireAdmin, async (req, res) => {
       paramIndex++;
     }
 
-    // Add role filter if provided
     if (role !== 'all') {
       query += ` AND role = $${paramIndex}`;
       params.push(role);
       paramIndex++;
     }
 
-    // Add ordering and pagination
     query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
-    // Get filtered users
     const usersResult = await pool.query(query, params);
 
-    // Get total count for filtered results
     let countQuery = 'SELECT COUNT(*) FROM users WHERE 1=1';
     const countParams = [];
     paramIndex = 1;
@@ -87,7 +80,6 @@ router.get('/api/admin/users', requireAdmin, async (req, res) => {
   }
 });
 
-// Approve a pending user (change role from 'pending' to 'worker')
 router.post('/api/admin/approve-user', requireAdmin, async (req, res) => {
   const { FRONTEND_URL } = req.app.locals.config;
   try {
@@ -97,7 +89,6 @@ router.post('/api/admin/approve-user', requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, error: 'User ID is required' });
     }
     
-    // Update user role to worker
     const updateResult = await pool.query(
       'UPDATE users SET role = $1 WHERE id = $2 AND role = $3 RETURNING *',
       ['worker', id, 'pending']
@@ -114,7 +105,6 @@ router.post('/api/admin/approve-user', requireAdmin, async (req, res) => {
   }
 });
 
-// Promote user from worker to admin
 router.post('/api/admin/promote-user', requireAdmin, async (req, res) => {
   const { FRONTEND_URL } = req.app.locals.config;
   try {
@@ -124,7 +114,6 @@ router.post('/api/admin/promote-user', requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, error: 'User ID is required' });
     }
     
-    // Update user role to admin
     const updateResult = await pool.query(
       'UPDATE users SET role = $1 WHERE id = $2 AND role = $3 RETURNING *',
       ['admin', id, 'worker']
@@ -141,7 +130,6 @@ router.post('/api/admin/promote-user', requireAdmin, async (req, res) => {
   }
 });
 
-// Demote user from admin to worker
 router.post('/api/admin/demote-user', requireAdmin, async (req, res) => {
   try {
     const { id } = req.body;
@@ -150,14 +138,12 @@ router.post('/api/admin/demote-user', requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, error: 'User ID is required' });
     }
     
-    // Get current user's ID to prevent self-demotion
     const currentUserId = req.user.id;
     
     if (currentUserId === id) {
       return res.status(400).json({ success: false, error: 'Cannot demote yourself' });
     }
     
-    // Update user role to worker
     const updateResult = await pool.query(
       'UPDATE users SET role = $1 WHERE id = $2 AND role = $3 RETURNING *',
       ['worker', id, 'admin']
@@ -174,7 +160,6 @@ router.post('/api/admin/demote-user', requireAdmin, async (req, res) => {
   }
 });
 
-// Delete a user
 router.delete('/api/admin/delete-user', requireAdmin, async (req, res) => {
   try {
     const { id } = req.body;
@@ -183,14 +168,12 @@ router.delete('/api/admin/delete-user', requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, error: 'User ID is required' });
     }
     
-    // Get current user's ID to prevent self-deletion
     const currentUserId = req.user.id;
     
     if (currentUserId === id) {
       return res.status(400).json({ success: false, error: 'Cannot delete yourself' });
     }
     
-    // Delete the user
     const deleteResult = await pool.query(
       'DELETE FROM users WHERE id = $1 RETURNING *',
       [id]
@@ -207,12 +190,8 @@ router.delete('/api/admin/delete-user', requireAdmin, async (req, res) => {
   }
 });
 
-// Modify the Google OAuth callback to set new users as 'pending' instead of 'worker'
-// This route will need to be integrated with your existing Google OAuth implementation
 router.post('/api/modify-google-oauth', async (req, res) => {
   try {
-    // This is just for documentation purposes - you'll need to modify your actual
-    // Google OAuth implementation to add this functionality
     res.json({ 
       success: true, 
       message: 'Instructions: Modify your Google OAuth callback to set role as "pending" instead of "worker"' 
@@ -223,7 +202,6 @@ router.post('/api/modify-google-oauth', async (req, res) => {
   }
 });
 
-// Route to check if user is approved or still pending
 router.get('/api/check-approval-status', async (req, res) => {
   try {
     if (!req.isAuthenticated()) {
@@ -232,7 +210,6 @@ router.get('/api/check-approval-status', async (req, res) => {
     
     const userId = req.user.id;
     
-    // Get the current user's role
     const userResult = await pool.query(
       'SELECT role FROM users WHERE id = $1',
       [userId]

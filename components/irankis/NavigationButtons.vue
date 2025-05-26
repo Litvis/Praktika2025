@@ -17,7 +17,6 @@
   <script setup>
   import { defineProps, defineEmits } from 'vue';
   
-  // Props
   const props = defineProps({
     options: {
       type: Array,
@@ -28,11 +27,8 @@
       required: true,
     },
   });
-  
-  // Emits
+
   const emit = defineEmits(['update:currentOption']);
-  
-  // Method to change the active option
   const changeOption = (optionId) => {
     emit('update:currentOption', optionId);
   };
@@ -43,7 +39,7 @@
     transition: background-color 0.3s, color 0.3s;
   }
   button:hover {
-    background-color: #047857; /* Green shade */
+    background-color: #047857;
     color: white;
   }
   </style>

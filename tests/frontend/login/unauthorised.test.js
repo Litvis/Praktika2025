@@ -1,9 +1,7 @@
-// tests/frontend/login/unauthorised.test.js
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { nextTick } from 'vue';
 
-// Mock the user store and router before importing anything
 vi.mock('~/stores/user.js', () => ({
   useUserStore: vi.fn()
 }));
@@ -19,26 +17,21 @@ describe('Unauthorized Access Page Component', () => {
   let originalWindowLocation;
   
   beforeEach(() => {
-    // Save original window.location
     originalWindowLocation = window.location;
     delete window.location;
     window.location = { href: '' };
     
-    // Setup router mock
     mockRouter = {
       push: vi.fn()
     };
     
-    // Setup user store mock
     mockUserStore = {
       clearUser: vi.fn()
     };
     
-    // Set mock return values
     vi.mocked(useRouter).mockReturnValue(mockRouter);
     vi.mocked(useUserStore).mockReturnValue(mockUserStore);
     
-    // Create a stub component based on the Unauthorized page
     const UnauthorizedPageStub = {
       template: `
       <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -99,50 +92,40 @@ describe('Unauthorized Access Page Component', () => {
       }
     };
     
-    // Mount the component
     wrapper = mount(UnauthorizedPageStub);
   });
   
   afterEach(() => {
-    // Restore window.location
     window.location = originalWindowLocation;
-    
-    // Clear all mocks
     vi.clearAllMocks();
   });
   
   it('should render the unauthorized access page correctly', () => {
-    // Check main container
     expect(wrapper.find('.min-h-screen').exists()).toBe(true);
-    
-    // Check error heading
+
     const heading = wrapper.find('h2');
     expect(heading.exists()).toBe(true);
     expect(heading.text()).toBe('Prieigos klaida');
-    
-    // Check error message
+
     const message = wrapper.find('p.text-sm');
     expect(message.exists()).toBe(true);
     expect(message.text()).toBe('Jūs neturite teisių peržiūrėti šį puslapį');
   });
   
   it('should display warning icon and administrator text', () => {
-    // Check warning icon 
     expect(wrapper.find('svg.text-red-500').exists()).toBe(true);
-    
-    // Check administrator message
+
     const adminMessage = wrapper.find('p.text-lg');
     expect(adminMessage.exists()).toBe(true);
     expect(adminMessage.text()).toBe('Jums reikalingos administratoriaus teisės.');
   });
   
   it('should have both navigation buttons', () => {
-    // Check allowed page button
+
     const allowedPageButton = wrapper.find('[data-testid="allowed-page-button"]');
     expect(allowedPageButton.exists()).toBe(true);
     expect(allowedPageButton.text()).toBe('Grįžti į prieigos puslapį');
-    
-    // Check logout button
+
     const logoutButton = wrapper.find('[data-testid="logout-button"]');
     expect(logoutButton.exists()).toBe(true);
     expect(logoutButton.text()).toBe('Atsijungti');
@@ -167,13 +150,11 @@ describe('Unauthorized Access Page Component', () => {
   });
   
   it('should have the correct styling classes', () => {
-    // Check allowed page button styling
     const allowedPageButton = wrapper.find('[data-testid="allowed-page-button"]');
     expect(allowedPageButton.classes()).toContain('bg-green-600');
     expect(allowedPageButton.classes()).toContain('hover:bg-green-700');
     expect(allowedPageButton.classes()).toContain('text-white');
-    
-    // Check logout button styling
+
     const logoutButton = wrapper.find('[data-testid="logout-button"]');
     expect(logoutButton.classes()).toContain('bg-gray-300');
     expect(logoutButton.classes()).toContain('hover:bg-gray-400');
@@ -181,6 +162,5 @@ describe('Unauthorized Access Page Component', () => {
   });
 });
 
-// These need to be imported after the mocks are set up
 import { useRouter } from 'vue-router';
 import { useUserStore } from '~/stores/user.js';

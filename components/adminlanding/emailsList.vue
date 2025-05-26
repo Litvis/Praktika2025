@@ -2,15 +2,12 @@
   <div class="flex flex-row h-screen bg-gray-50">
     <Sidebar />
     <div class="w-3/4 flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
-      <!-- Header Section -->
       <div class="px-8 py-6">
         <h1 class="font-bold text-4xl text-gray-800">Sąrašas</h1>
         <p class="text-gray-500 mt-2">Siųstų laiškų istorija ({{ totalEmails }})</p>
       </div>
       
-      <!-- Table Container -->
       <div class="px-8 pb-8">
-        <!-- Search and Filter -->
         <div class="flex justify-between items-center mb-6">
           <div class="relative w-64">
             <input 
@@ -51,7 +48,6 @@
           </div>
         </div>
         
-        <!-- Table Header -->
         <div class="bg-white rounded-t-lg border border-gray-200 shadow-sm overflow-hidden">
           <div class="grid grid-cols-6 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-200">
             <div class="font-semibold text-gray-600">ID</div>
@@ -62,7 +58,6 @@
             <div class="font-semibold text-gray-600 text-center">Veiksmai</div>
           </div>
           
-          <!-- Table Body -->
           <div v-if="isLoading" class="p-8 text-center">
             <div class="inline-block w-8 h-8 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
             <p class="mt-2 text-gray-500">Kraunami duomenys...</p>
@@ -116,7 +111,6 @@
           </div>
         </div>
         
-        <!-- Pagination -->
         <div class="flex justify-between items-center mt-6">
           <div class="text-sm text-gray-600">
             Rodoma {{ ((currentPage - 1) * itemsPerPage) + 1 }}-{{ Math.min(currentPage * itemsPerPage, totalEmails) }} iš {{ totalEmails }} įrašų
@@ -173,10 +167,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '~/components/adminlanding/Sidebar.vue';
 
-// Router for navigation
 const router = useRouter();
-
-// Reactive state
 const emails = ref([]);
 const totalEmails = ref(0);
 const currentPage = ref(1);
@@ -187,15 +178,12 @@ const isLoading = ref(false);
 const config = useRuntimeConfig();
 const apiBase = config.public.apiBase;
 
-// Fetch emails from the backend
 const fetchEmails = async () => {
   try {
     isLoading.value = true;
     
-    // Calculate offset for pagination
     const offset = (currentPage.value - 1) * itemsPerPage;
     
-    // Build query parameters
     const params = new URLSearchParams();
     params.append('limit', itemsPerPage.toString());
     params.append('offset', offset.toString());
@@ -208,7 +196,6 @@ const fetchEmails = async () => {
       params.append('dateFilter', dateFilter.value);
     }
     
-    // Fetch data from API
     const response = await fetch(`${apiBase}/api/emails/recent?${params.toString()}`);
     const data = await response.json();
     
@@ -225,7 +212,6 @@ const fetchEmails = async () => {
   }
 };
 
-// New function to format sender display
 const formatSender = (email) => {
   if (email.sender_name && email.sender_email) {
     return `${email.sender_name} (${email.sender_email})`;
@@ -238,17 +224,15 @@ const formatSender = (email) => {
   }
 };
 
-// Handle search with debounce
 let searchTimeout;
 const handleSearch = () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    currentPage.value = 1; // Reset to first page when searching
+    currentPage.value = 1;
     fetchEmails();
   }, 300);
 };
 
-// Recipient formatting (shortened if many)
 const formatRecipients = (recipients) => {
   if (!recipients) return '';
   
@@ -258,7 +242,6 @@ const formatRecipients = (recipients) => {
   return `${emails[0]} ir dar ${emails.length - 1}`;
 };
 
-// Format date and time
 const formatDay = (date) => {
   return date.toLocaleDateString('lt-LT', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
@@ -267,10 +250,8 @@ const formatTime = (date) => {
   return date.toLocaleTimeString('lt-LT', { hour: '2-digit', minute: '2-digit' });
 };
 
-// Pagination logic
 const totalPages = computed(() => Math.ceil(totalEmails.value / itemsPerPage));
 
-// Enhanced pagination controls with ellipsis for many pages
 const displayedPages = computed(() => {
   if (totalPages.value <= 7) {
     return Array.from({ length: totalPages.value }, (_, i) => i + 1);
@@ -311,14 +292,12 @@ const viewEmail = (id) => {
   navigateTo(`/emails/${id}`);
 };
 
-// Export emails as CSV
 const exportEmails = async () => {
   try {
     isLoading.value = true;
     
-    // Fetch all emails for export (without pagination)
     const params = new URLSearchParams();
-    params.append('limit', '1000'); // Get a large batch
+    params.append('limit', '1000');
     
     if (searchQuery.value) {
       params.append('search', searchQuery.value);
@@ -332,15 +311,14 @@ const exportEmails = async () => {
     const data = await response.json();
     
     if (data.success) {
-      // Convert to CSV format
       const headers = ['ID', 'Tema', 'Siuntėjas', 'Gavėjas', 'Išsiuntimo laikas', 'Priedai'];
       const csvRows = [headers.join(',')];
       
       data.data.emails.forEach(email => {
         const row = [
           email.id,
-          `"${email.subject.replace(/"/g, '""')}"`, // Escape quotes
-          `"${formatSender(email).replace(/"/g, '""')}"`, // Format sender and escape quotes
+          `"${email.subject.replace(/"/g, '""')}"`,
+          `"${formatSender(email).replace(/"/g, '""')}"`,
           email.recipient_email,
           new Date(email.created_at).toLocaleString('lt-LT'),
           email.attachments ? 'Taip' : 'Ne'
@@ -349,8 +327,6 @@ const exportEmails = async () => {
       });
       
       const csvContent = csvRows.join('\n');
-      
-      // Create download link
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -368,7 +344,6 @@ const exportEmails = async () => {
   }
 };
 
-// Load data when component mounts
 onMounted(() => {
   fetchEmails();
 });

@@ -2,23 +2,19 @@
     <div class="flex flex-row h-screen bg-gray-50">
       <Sidebar />
       <div class="w-3/4 flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
-        <!-- Loading State -->
         <div v-if="isLoading" class="flex-grow flex items-center justify-center">
           <div class="inline-block w-8 h-8 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
           <p class="ml-3 text-gray-500">Kraunama...</p>
         </div>
   
-        <!-- Error State -->
         <div v-else-if="error" class="flex-grow flex items-center justify-center">
           <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {{ error }}
           </div>
         </div>
   
-        <!-- Email Details -->
         <div v-else-if="email" class="px-8 py-6">
           <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            <!-- Email Header -->
             <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
               <h1 class="font-bold text-2xl text-gray-800">{{ email.subject }}</h1>
               <div class="mt-2 text-sm text-gray-600 flex justify-between items-center">
@@ -31,15 +27,13 @@
               </div>
             </div>
   
-            <!-- Email Body -->
             <div class="p-6">
               <div 
                 class="text-gray-700" 
                 v-html="formatEmailContent(email.description)"
               ></div>
             </div>
-  
-            <!-- Attachments Section -->
+
             <div v-if="email.attachments" class="px-6 py-4 bg-gray-50 border-t border-gray-200">
               <h3 class="text-lg font-semibold text-gray-700 mb-3">Priedai</h3>
               <div class="space-y-2">
@@ -55,8 +49,7 @@
                 </div>
               </div>
             </div>
-  
-            <!-- Navigation -->
+
             <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-between items-center">
               <button 
                 @click="goBack" 
@@ -80,22 +73,18 @@
   import Sidebar from '~/components/adminlanding/Sidebar.vue';
   import DOMPurify from 'dompurify';
 
-  // Router and route
   const route = useRoute();
   const router = useRouter();
-  
-  // Reactive state
   const email = ref(null);
   const isLoading = ref(true);
   const error = ref(null);
-  
-  // Fetch email details
+
   const fetchEmailDetails = async () => {
     try {
       isLoading.value = true;
       const emailId = route.params.id;
       
-      const response = await fetch(`${apiBase.value}/api/emails/${emailId}`);
+      const response = await fetch(`${apiBase}/api/emails/${emailId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -110,34 +99,28 @@
       isLoading.value = false;
     }
   };
-  
-  // Computed list of attachments
+
   const attachmentsList = computed(() => {
     return email.value?.attachments ? email.value.attachments.split(',').map(a => a.trim()) : [];
   });
-  
-  // Format date
+
   const formatDay = (date) => {
     return date.toLocaleDateString('lt-LT', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
-  
-  // Format time
+
   const formatTime = (date) => {
     return date.toLocaleTimeString('lt-LT', { hour: '2-digit', minute: '2-digit' });
   };
   
 const formatEmailContent = (content) => {
   if (!content) return '';
-  // DOMPurify will sanitize the HTML but preserve formatting
   return DOMPurify.sanitize(content);
 };
-  
-  // Navigation
+
   const goBack = () => {
     router.push('/emails');
   };
   
-  // Fetch email details when component mounts
   onMounted(() => {
     fetchEmailDetails();
   });

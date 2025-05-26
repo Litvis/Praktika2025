@@ -1,6 +1,5 @@
 <template>
   <div class="w-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-    <!-- Greeting Header -->
     <div class="p-8">
       <p class="font-bold text-5xl text-gray-800 leading-tight">
         Gražios dienos,<br> 
@@ -9,12 +8,9 @@
       <p class="text-gray-500 mt-2">{{ formatDate(new Date()) }}</p>
     </div>
     
-    <!-- Dashboard Content -->
     <div class="flex flex-col flex-1 px-8 pb-8">
       <div class="flex flex-col lg:flex-row gap-8">
-        <!-- Left Column - Statistics -->
         <div class="w-full lg:w-1/4 space-y-8">
-          <!-- Emails Sent Card -->
           <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg">
             <div class="p-6">
               <div class="flex items-center mb-4">
@@ -31,7 +27,6 @@
             <div class="h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
           </div>
           
-          <!-- Last Sent By Card -->
           <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg">
             <div class="p-6">
               <div class="flex items-center mb-4">
@@ -57,9 +52,7 @@
           </div>
         </div>
         
-        <!-- Right Column - Last Email and Time -->
         <div class="w-full lg:w-3/4 space-y-8">
-          <!-- Last Email Card -->
           <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div class="p-6">
               <div class="flex justify-between items-center mb-4">
@@ -106,7 +99,6 @@
             </div>
           </div>
           
-          <!-- Last Sent Time Card -->
           <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div class="p-6">
               <div class="flex justify-between items-center">
@@ -136,7 +128,6 @@
         </div>
       </div>
       
-      <!-- View List Button -->
       <div class="flex justify-end mt-8">
         <button @click="viewEmailList" class="bg-gray-800 hover:bg-gray-900 text-white font-medium px-6 py-3 rounded-lg flex items-center transition-colors duration-300">
           <span>Peržiūrėti sąrašą</span>
@@ -164,35 +155,29 @@ const dashboardStats = ref({
   lastEmail: null
 });
 
-// Function to safely display HTML content
 const formatEmailContent = (content) => {
   if (!content) return '';
   return DOMPurify.sanitize(content);
 };
 
-// Function to format current date
 const formatDate = (date) => {
   const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
   return date.toLocaleDateString('lt-LT', options);
 };
 
-// Function to format date as YYYY-MM-DD
 const formatDateShort = (date) => {
   return date.toISOString().split('T')[0];
 };
 
-// Function to format time as HH:MM
 const formatTime = (date) => {
   return date.toTimeString().substring(0, 5);
 };
 
-// Function to calculate time ago
 const getTimeAgo = (timestamp) => {
   const now = new Date();
   const emailDate = new Date(timestamp);
   const diffMs = now - emailDate;
   
-  // Convert to minutes, hours, days
   const diffMinutes = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
@@ -206,7 +191,6 @@ const getTimeAgo = (timestamp) => {
   }
 };
 
-// Function to fetch dashboard data
 const fetchDashboardData = async () => {
   try {
     const response = await fetch(`${apiBase}/api/dashboard/stats`);
@@ -222,17 +206,14 @@ const fetchDashboardData = async () => {
   }
 };
 
-// View specific email
 const viewEmail = (emailId) => {
   router.push(`/emails/${emailId}`);
 };
 
-// View email list
 const viewEmailList = () => {
   router.push('/dashboard');
 };
 
-// Fetch data when component mounts
 onMounted(() => {
   fetchDashboardData();
 });

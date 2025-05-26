@@ -4,16 +4,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Function to determine if we're connecting to a local database
 const isLocalDatabase = (connectionString) => {
   return !connectionString || 
          connectionString.includes('localhost') || 
          connectionString.includes('127.0.0.1');
 };
 
-// Create and export pool creation function
 export function createPool() {
-  // Configure SSL based on whether we're connecting to a local database
   const sslConfig = isLocalDatabase(process.env.DATABASE_URL) 
     ? false 
     : { rejectUnauthorized: false };

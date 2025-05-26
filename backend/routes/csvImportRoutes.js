@@ -3,7 +3,6 @@ import { pool } from '../db.js';
 
 const router = express.Router();
 
-// Middleware to check for authentication
 const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
@@ -11,7 +10,6 @@ const requireAuth = (req, res, next) => {
   return res.status(401).json({ success: false, error: 'Unauthorized' });
 };
 
-// Middleware to check for admin role
 const requireAdmin = (req, res, next) => {
   if (req.isAuthenticated() && req.user.role === 'admin') {
     return next();
@@ -19,62 +17,37 @@ const requireAdmin = (req, res, next) => {
   return res.status(403).json({ success: false, error: 'Access denied. Admin role required.' });
 };
 
-/**
- * Validuoja el. pašto adresą naudojant regex
- * @param {string} email - El. pašto adresas validavimui
- * @returns {boolean} - Ar el. pašto adresas validus
- */
 function isValidEmail(email) {
   if (!email || typeof email !== 'string') return false;
   
-  // Pašaliname tarpus pradžioje ir pabaigoje
   email = email.trim();
   
-  // Tikriname ilgį
   if (email.length < 6 || email.length > 255) return false;
   
-  // Pagrindinis validavimo regex
-  // Šis regex patikrina:
-  // - Vartotojo dalį (prieš @): gali būti raidės, skaičiai, taškai, brūkšneliai, pabraukimai
-  // - Būtinas @ simbolis
-  // - Domeno dalį: gali būti raidės, skaičiai, taškai, brūkšneliai
-  // - Privalo būti bent vienas taškas domeno dalyje
-  // - Po paskutinio taško turi būti bent 2 raidės (TLD)
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   
-  // Patikriname su regex
   if (!emailRegex.test(email)) return false;
   
-  // Papildomos patikros:
-  
-  // 1. Vartotojo dalis negali prasidėti ar baigtis tašku
   const [localPart] = email.split('@');
   if (localPart.startsWith('.') || localPart.endsWith('.')) return false;
   
-  // 2. Negali būti dviejų taškų iš eilės vartotojo dalyje
   if (localPart.includes('..')) return false;
   
-  // 3. Po @ turi būti validus domenas
   const [, domain] = email.split('@');
   
-  // Domenas negali prasidėti ar baigtis brūkšneliu
   if (domain.startsWith('-') || domain.endsWith('-')) return false;
   
-  // Papildoma validacija TLD (top-level domain)
   const tld = domain.split('.').pop();
   if (tld.length < 2) return false;
   
-  // Jei praėjo visus testus, el. paštas yra validus
   return true;
 }
 
-// Ensure necessary tables exist
 const setupTables = async () => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     
-    // Create the email_groups table if it doesn't exist
     await client.query(`
       CREATE TABLE IF NOT EXISTS email_groups (
         id SERIAL PRIMARY KEY,
@@ -85,7 +58,6 @@ const setupTables = async () => {
       );
     `);
     
-    // Create the group_emails table if it doesn't exist
     await client.query(`
       CREATE TABLE IF NOT EXISTS group_emails (
         id SERIAL PRIMARY KEY,
@@ -96,7 +68,6 @@ const setupTables = async () => {
       );
     `);
     
-    // Create index for faster lookups
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_group_emails_group_id ON group_emails(group_id);
     `);
@@ -112,12 +83,10 @@ const setupTables = async () => {
   }
 };
 
-// Set up tables when this module is loaded
 setupTables().catch(err => {
   console.error('Failed to set up tables:', err);
 });
 
-// Get all groups with email counts
 router.get('/api/groups-with-counts', requireAuth, async (req, res) => {
   const { FRONTEND_URL } = req.app.locals.config;
   try {
@@ -143,7 +112,6 @@ router.get('/api/groups-with-counts', requireAuth, async (req, res) => {
   }
 });
 
-// Get all groups (without counts) - for dropdown selections
 router.get('/api/groups', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -163,13 +131,11 @@ router.get('/api/groups', requireAuth, async (req, res) => {
   }
 });
 
-// Get emails for a specific group
 router.get('/api/groups/:id/emails', requireAuth, async (req, res) => {
   const { FRONTEND_URL } = req.app.locals.config;
   try {
     const groupId = req.params.id;
     
-    // First verify the group exists
     const groupResult = await pool.query(
       'SELECT id, name FROM email_groups WHERE id = $1',
       [groupId]
@@ -182,13 +148,11 @@ router.get('/api/groups/:id/emails', requireAuth, async (req, res) => {
       });
     }
     
-    // Get all emails for this group
     const emailsResult = await pool.query(
       'SELECT email FROM group_emails WHERE group_id = $1 ORDER BY email',
       [groupId]
     );
     
-    // Extract just the email addresses
     const emails = emailsResult.rows.map(row => row.email);
     
     res.json({
@@ -205,13 +169,11 @@ router.get('/api/groups/:id/emails', requireAuth, async (req, res) => {
   }
 });
 
-// Import data from CSV (replacing all existing data)
 router.post('/api/import-csv', requireAdmin, async (req, res) => {
   const { FRONTEND_URL } = req.app.locals.config;
   const client = await pool.connect();
   
   try {
-    // Validate input
     const { data } = req.body;
     
     if (!data || !Array.isArray(data) || data.length === 0) {
@@ -221,30 +183,24 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
       });
     }
     
-    // Start a transaction
     await client.query('BEGIN');
     
-    // First, delete all existing data
     await client.query('DELETE FROM group_emails');
     await client.query('DELETE FROM email_groups');
     
     console.log('Cleared existing data');
     
-    // Stats to track the import process
     const stats = {
       groups: 0,
       emails: 0,
       invalidEmails: 0
     };
     
-    // Process groups
     const uniqueGroups = new Set();
     const groupNameToId = {};
     
-    // First pass: collect all unique group names
     data.forEach(row => uniqueGroups.add(row.Group));
     
-    // For each unique group, create it
     for (const groupName of uniqueGroups) {
       const newGroup = await client.query(
         'INSERT INTO email_groups (name) VALUES ($1) RETURNING id',
@@ -257,19 +213,16 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
     
     console.log(`Created ${stats.groups} new groups`);
     
-    // Process emails
     for (const row of data) {
-      // Validate email
       const email = row.Email ? row.Email.trim().toLowerCase() : '';
       if (!isValidEmail(email)) {
         stats.invalidEmails++;
-        continue; // Skip invalid emails
+        continue;
       }
       
       const groupId = groupNameToId[row.Group];
       
       try {
-        // Insert the email, handling duplicate constraint violations
         await client.query(
           `INSERT INTO group_emails (group_id, email) 
            VALUES ($1, $2)
@@ -279,14 +232,12 @@ router.post('/api/import-csv', requireAdmin, async (req, res) => {
         
         stats.emails++;
       } catch (err) {
-        // Log any errors but continue processing
         console.error(`Error inserting email ${email}:`, err.message);
       }
     }
     
     console.log(`Added ${stats.emails} emails, skipped ${stats.invalidEmails} invalid emails`);
     
-    // Commit the transaction
     await client.query('COMMIT');
     
     res.json({

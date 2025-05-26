@@ -1,9 +1,7 @@
-// tests/frontend/login/loginForm.test.js
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { nextTick } from 'vue';
 
-// Mock the Iconify component
 vi.mock('@iconify/vue', () => ({
   Icon: {
     name: 'Icon',
@@ -16,7 +14,6 @@ describe('Login Form Component', () => {
   let wrapper;
   
   beforeEach(() => {
-    // Create a stub component based on the Login Form
     const LoginFormStub = {
       template: `
       <div class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-b from-gray-50 to-gray-100 p-6">
@@ -60,23 +57,18 @@ describe('Login Form Component', () => {
       </div>
       `,
       setup() {
-        // Stub setup function to mimic the script setup in the component
         return {};
       }
     };
-    
-    // Mount the component
+
     wrapper = mount(LoginFormStub);
   });
   
   it('should render the login page correctly', () => {
-    // Check main container
     expect(wrapper.find('.min-h-screen').exists()).toBe(true);
-    
-    // Check card container
+
     expect(wrapper.find('.max-w-md').exists()).toBe(true);
-    
-    // Check top wave decoration
+
     expect(wrapper.find('.bg-green-600').exists()).toBe(true);
     expect(wrapper.find('svg').exists()).toBe(true);
   });
@@ -89,12 +81,11 @@ describe('Login Form Component', () => {
   });
   
   it('should display correct welcome text', () => {
-    // Check heading
+
     const heading = wrapper.find('h1');
     expect(heading.exists()).toBe(true);
     expect(heading.text()).toBe('Sveiki atvykę');
-    
-    // Check description
+
     const description = wrapper.find('p');
     expect(description.exists()).toBe(true);
     expect(description.text()).toContain('Prisijunkite su įmonės Google paskyra');
@@ -114,15 +105,12 @@ describe('Login Form Component', () => {
   });
   
   it('should have the correct classes for styling and responsiveness', () => {
-    // Test card container has shadow class
     expect(wrapper.find('.shadow-lg').exists()).toBe(true);
-    
-    // Test heading has responsive text size
+
     const heading = wrapper.find('h1');
     expect(heading.classes()).toContain('text-2xl');
     expect(heading.classes()).toContain('md:text-3xl');
-    
-    // Test signin button has hover effect classes
+
     const signInButton = wrapper.find('a[data-testid="google-signin-button"]');
     expect(signInButton.classes()).toContain('hover:shadow');
     expect(signInButton.classes()).toContain('transition-all');

@@ -1,4 +1,3 @@
-<!-- pages/Unauthorized.vue -->
 <template>
     <div class="flex items-center justify-center h-screen bg-gray-100">
       <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">

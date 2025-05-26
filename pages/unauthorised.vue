@@ -45,16 +45,13 @@
   const apiBase = config.public.apiBase;
   
   const goToAllowedPage = () => {
-    // Redirect to irankis page, which is accessible for all authenticated users
     router.push('/irankis');
   };
   
   const logout = async () => {
     try {
-      // Redirect to the backend logout endpoint
       window.location.href = `${apiBase}/logout`;
       
-      // Clear local user state
       userStore.clearUser();
     } catch (error) {
       console.error('Error during logout:', error);

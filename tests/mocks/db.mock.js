@@ -1,6 +1,3 @@
-// backend/db.js Mock
-// Path: __mocks__/backend/db.js
-
 import { jest } from '@jest/globals';
 
 const mockQuery = jest.fn().mockResolvedValue({ rows: [], rowCount: 0 });

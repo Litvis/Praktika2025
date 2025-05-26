@@ -6,7 +6,6 @@ const requireAdmin = (req, res, next) => {
   return res.status(403).json({ success: false, error: 'Access denied. Admin role required.' });
 };
 
-// Example of using the middleware
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const usersResult = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
@@ -24,8 +23,6 @@ app.post('/api/admin/promote', requireAdmin, async (req, res) => {
     if (!email) {
       return res.status(400).json({ success: false, error: 'Email is required' });
     }
-
-    // Update user role to admin
     const updateResult = await pool.query(
       'UPDATE users SET role = $1 WHERE email = $2 RETURNING *',
       ['admin', email]

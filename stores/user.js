@@ -1,9 +1,8 @@
-// stores/user.js
 import { defineStore } from 'pinia';
 import { ref, computed, onMounted } from 'vue';
 
 export const useUserStore = defineStore('user', () => {
-  // Reactive state
+
   const user = ref(null);
   const isAdmin = ref(false);
   const isPending = ref(false);
@@ -13,7 +12,6 @@ export const useUserStore = defineStore('user', () => {
   const error = ref(null);
   const debugMessages = ref([]);
 
-  // Helper for debugging
   function log(message, data = null) {
     const logEntry = {
       timestamp: new Date().toISOString(),
@@ -22,7 +20,6 @@ export const useUserStore = defineStore('user', () => {
     };
     console.log(`[UserStore] ${message}`, data || '');
     debugMessages.value.push(logEntry);
-    // Keep only the last 50 messages
     if (debugMessages.value.length > 50) {
       debugMessages.value.shift();
     }
@@ -50,8 +47,7 @@ export const useUserStore = defineStore('user', () => {
 
   async function fetchUserProfile() {
     try {
-      // Avoid frequent refetching (cache for 30 seconds during development)
-      const cacheTime = 30 * 1000; // 30 seconds
+      const cacheTime = 30 * 1000;
       if (Date.now() - lastCheck.value < cacheTime && user.value) {
         log('Using cached user profile');
         return user.value;
@@ -66,7 +62,6 @@ export const useUserStore = defineStore('user', () => {
       
       log('API URL', apiUrl);
       
-      // Use the standard fetch API instead of $fetch
       const response = await fetch(apiUrl, {
         method: 'GET',
         credentials: 'include',
@@ -112,7 +107,6 @@ export const useUserStore = defineStore('user', () => {
       log('Logging out user');
       const config = useRuntimeConfig();
       
-      // Redirect to the backend logout endpoint instead of fetching it
       window.location.href = `${config.public.apiBase}/logout`;
       
       clearUser();
@@ -124,7 +118,6 @@ export const useUserStore = defineStore('user', () => {
     }
   }
   
-  // Check user approval status
   async function checkApprovalStatus() {
     try {
       log('Checking user approval status');
@@ -146,7 +139,6 @@ export const useUserStore = defineStore('user', () => {
         if (data.success) {
           if (data.approved && user.value) {
             log('User is approved with role', data.role);
-            // Update user role if it's changed
             if (user.value.role !== data.role) {
               user.value.role = data.role;
               isAdmin.value = data.role === 'admin';
@@ -163,7 +155,6 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // Return the reactive state and actions
   return {
     user,
     isAdmin,

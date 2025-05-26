@@ -18,31 +18,26 @@
       </option>
     </select>
 
-    <!-- Loading indicator for groups -->
     <div v-if="isLoading" class="mt-2 flex items-center">
       <div class="w-4 h-4 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin mr-2"></div>
       <span class="text-xs text-gray-500">Kraunamos grupės...</span>
     </div>
 
-    <!-- Error message if loading fails -->
     <div v-if="error" class="mt-2 text-xs text-red-500">
       {{ error }}
     </div>
 
-    <!-- Preview of selected group's recipients -->
     <div v-if="selectedGroup && selectedGroupEmails.length > 0" class="mt-3 md:mt-4">
       <div class="flex justify-between items-center">
         <p class="text-xs md:text-sm font-medium text-gray-700">Pasirinktos grupės gavėjai:</p>
         <p class="text-[10px] md:text-xs text-gray-500">Viso: {{ selectedGroupEmails.length }} gavėjų</p>
       </div>
       
-      <!-- Loading emails indicator -->
       <div v-if="isLoadingEmails" class="mt-2 flex items-center justify-center p-4">
         <div class="w-4 h-4 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin mr-2"></div>
         <span class="text-xs text-gray-500">Kraunami gavėjų adresai...</span>
       </div>
       
-      <!-- Email list -->
       <div v-else class="mt-1 md:mt-2 p-2 border rounded-md bg-gray-50 max-h-32 overflow-y-auto">
         <div v-for="(email, index) in selectedGroupEmails" :key="index" class="text-xs md:text-sm text-gray-600">
           {{ email }}
@@ -57,7 +52,6 @@ import { ref, watch, onMounted } from 'vue';
 
 const emit = defineEmits(['updateEmails']);
 
-// State variables
 const groups = ref([]);
 const selectedGroup = ref('');
 const selectedGroupEmails = ref([]);
@@ -67,14 +61,13 @@ const error = ref(null);
 const config = useRuntimeConfig();
 const apiBase = config.public.apiBase;
 
-// Fetch all available groups from the database
 const fetchGroups = async () => {
   try {
     isLoading.value = true;
     error.value = null;
     
-    const response = await fetch(`${apiBase}/api/groups`, {
-      credentials: 'include' // Important for authenticated requests
+    const response = await fetch(`${apiBase.value}/api/groups`, {
+      credentials: 'include'
     });
     
     if (!response.ok) {
@@ -97,7 +90,6 @@ const fetchGroups = async () => {
   }
 };
 
-// Fetch emails for a specific group
 const fetchGroupEmails = async (groupId) => {
   if (!groupId) {
     selectedGroupEmails.value = [];
@@ -109,8 +101,8 @@ const fetchGroupEmails = async (groupId) => {
     isLoadingEmails.value = true;
     error.value = null;
     
-    const response = await fetch(`${apiBase}/api/groups/${groupId}/emails`, {
-      credentials: 'include' // Important for authenticated requests
+    const response = await fetch(`${apiBase.value}/api/groups/${groupId}/emails`, {
+      credentials: 'include'
     });
     
     if (!response.ok) {
@@ -136,20 +128,17 @@ const fetchGroupEmails = async (groupId) => {
   }
 };
 
-// Function to update parent component when a group is selected
 const updateSelectedGroup = () => {
   console.log('🔄 Group selected:', selectedGroup.value);
   fetchGroupEmails(selectedGroup.value);
 };
 
-// Watch for changes in selectedGroup to automatically update parent
 watch(selectedGroup, (newValue, oldValue) => {
   if (newValue !== oldValue) {
     updateSelectedGroup();
   }
 });
 
-// Load groups when component mounts
 onMounted(() => {
   fetchGroups();
 });
